@@ -3,7 +3,8 @@
     "allow": [
       "WebSearch",
       "WebFetch(domain:unsplash.com)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(echo gh not available or not authenticated:*)"
     ]
   }
 }
