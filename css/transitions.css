@@ -1,0 +1,81 @@
+/* ===== TRANSITIONS ===== */
+/* Angular section clip-paths, skip-to-content, focus/a11y */
+
+/* ===== ANGULAR SECTION TRANSITIONS ===== */
+/* Diagonal clip-paths replace flat dividers */
+.hero {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 60px), 0 100%);
+  margin-bottom: -60px;
+}
+
+.about {
+  clip-path: polygon(0 60px, 100% 0, 100% 100%, 0 calc(100% - 60px));
+  margin-bottom: -60px;
+}
+
+.collection {
+  clip-path: polygon(0 0, 100% 60px, 100% calc(100% - 60px), 0 100%);
+  margin-bottom: -60px;
+}
+
+.roadmap {
+  clip-path: polygon(0 60px, 100% 0, 100% 100%, 0 calc(100% - 60px));
+  margin-bottom: -60px;
+}
+
+.stats {
+  clip-path: polygon(0 0, 100% 60px, 100% calc(100% - 60px), 0 100%);
+  margin-bottom: -60px;
+}
+
+.arsenal {
+  clip-path: polygon(0 60px, 100% 0, 100% 100%, 0 calc(100% - 60px));
+  margin-bottom: -60px;
+}
+
+.faq {
+  clip-path: polygon(0 0, 100% 60px, 100% 100%, 0 100%);
+}
+
+.footer {
+  clip-path: polygon(0 30px, 100% 0, 100% 100%, 0 100%);
+}
+
+/* ===== SKIP TO CONTENT ===== */
+.skip-to-content {
+  position: fixed;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 24px;
+  background: var(--gold);
+  color: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-decoration: none;
+  z-index: 10001;
+  transition: top 0.3s ease;
+}
+
+.skip-to-content:focus {
+  top: 10px;
+}
+
+/* ===== FOCUS / ACCESSIBILITY ===== */
+*:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.btn:focus-visible {
+  box-shadow: 0 0 0 3px var(--gold-glow);
+}

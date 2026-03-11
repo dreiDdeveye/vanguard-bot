@@ -1,0 +1,144 @@
+/* ===== MODAL ===== */
+/* NFT Modal — overlay, modal, image, traits, footer */
+
+.nft-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(2, 4, 3, 0.9);
+  backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+  padding: 24px;
+}
+
+.nft-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.nft-modal {
+  max-width: 380px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--gold-border);
+  position: relative;
+  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+  transform: scale(0.9) translateY(20px);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nft-modal-overlay.active .nft-modal {
+  transform: scale(1) translateY(0);
+}
+
+.nft-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 28px;
+  cursor: pointer;
+  z-index: 5;
+  transition: color 0.2s ease;
+  font-family: var(--font-mono);
+}
+
+.nft-modal-close:hover {
+  color: var(--gold);
+}
+
+.nft-modal-image {
+  aspect-ratio: 4 / 3;
+  width: 100%;
+  object-fit: cover;
+}
+
+.nft-modal-details {
+  padding: 18px 20px;
+}
+
+.nft-modal-rarity {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: inline-block;
+  padding: 3px 10px;
+  background: rgba(5, 8, 7, 0.5);
+  border: 1px solid var(--border);
+}
+
+.nft-modal-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-bright);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.nft-modal-traits {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.nft-modal-trait {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+}
+
+.nft-modal-trait-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.nft-modal-trait-value {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+  letter-spacing: 1px;
+}
+
+.nft-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.nft-modal-class {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.nft-modal-price {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 1px;
+}

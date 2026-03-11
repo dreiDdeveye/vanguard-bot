@@ -1,0 +1,223 @@
+/* ===== NAVBAR ===== */
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 20px 0;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background 0.4s ease, padding 0.4s ease, border-color 0.4s ease;
+}
+
+.navbar.scrolled {
+  background: rgba(5, 8, 7, 0.95);
+  border-bottom-color: var(--gold-border);
+  padding: 14px 0;
+}
+
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 8px;
+  text-decoration: none;
+  color: var(--gold);
+  text-shadow: 0 0 30px var(--gold-glow);
+  transition: text-shadow 0.4s ease, letter-spacing 0.4s ease, filter 0.4s ease;
+  text-transform: uppercase;
+  position: relative;
+}
+
+.logo::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+
+.logo:hover {
+  text-shadow: 0 0 40px var(--gold-glow), 0 0 80px rgba(76, 201, 138, 0.2);
+  letter-spacing: 10px;
+  filter: brightness(1.2);
+}
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  gap: 32px;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  position: relative;
+  padding: 4px 0;
+}
+
+.nav-links a::before {
+  content: '//';
+  opacity: 0;
+  margin-right: 4px;
+  color: var(--gold);
+  font-size: 10px;
+  transition: opacity 0.3s ease;
+}
+
+.nav-links a:hover::before,
+.nav-links a.active::before {
+  opacity: 1;
+}
+
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--gold);
+  transition: width 0.3s ease;
+}
+
+.nav-links a:hover::after,
+.nav-links a.active::after {
+  width: 100%;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+  color: var(--gold);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.hamburger span {
+  width: 22px;
+  height: 1.5px;
+  background: var(--gold);
+  transition: all 0.3s ease;
+}
+
+/* ===== BUTTONS — angular mecha ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 28px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm), 100% 100%, var(--cut-sm) 100%, 0 calc(100% - var(--cut-sm)));
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+
+.btn:hover::before {
+  transform: translateX(100%);
+}
+
+.btn:active {
+  transform: scale(0.97);
+  transition-duration: 0.1s;
+}
+
+.btn-primary {
+  background: rgba(76, 201, 138, 0.06);
+  color: var(--gold);
+  border: 1px solid var(--gold-border);
+  clip-path: none;
+  border-radius: var(--radius);
+}
+
+.btn-primary:hover {
+  background: var(--gold-dim);
+  border-color: var(--gold);
+  box-shadow: 0 0 25px var(--gold-dim);
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, var(--gold), #2e9660);
+  color: #040806;
+}
+
+.btn-accent:hover {
+  filter: brightness(1.2) drop-shadow(0 0 20px var(--gold-glow));
+  transform: translateY(-2px);
+  letter-spacing: 3px;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-light);
+  clip-path: none;
+  border-radius: 0;
+}
+
+.btn-ghost:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--gold-dim);
+}
+
+.btn-lg {
+  padding: 15px 40px;
+  font-size: 12px;
+}
+
+.btn-full {
+  width: 100%;
+  padding: 16px;
+  font-size: 12px;
+}

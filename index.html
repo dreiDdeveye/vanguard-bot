@@ -11,7 +11,22 @@
   <meta property="og:image" content="https://vanguardnft.io/og-image.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23050807'/%3E%3Cpath d='M16 4 L28 28 H4Z' fill='none' stroke='%234cc98a' stroke-width='2'/%3E%3Cpath d='M16 10 L22 24 H10Z' fill='%234cc98a' fill-opacity='0.3'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="css/style.css" />
+  <!-- Component CSS -->
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/transitions.css" />
+  <link rel="stylesheet" href="css/navbar.css" />
+  <link rel="stylesheet" href="css/hero.css" />
+  <link rel="stylesheet" href="css/about.css" />
+  <link rel="stylesheet" href="css/collection.css" />
+  <link rel="stylesheet" href="css/roadmap.css" />
+  <link rel="stylesheet" href="css/stats.css" />
+  <link rel="stylesheet" href="css/arsenal.css" />
+  <link rel="stylesheet" href="css/faq.css" />
+  <link rel="stylesheet" href="css/footer.css" />
+  <link rel="stylesheet" href="css/modal.css" />
+  <link rel="stylesheet" href="css/effects.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 </head>
 <body>
@@ -108,7 +123,7 @@
 
         <li><a href="#roadmap">Roadmap</a></li>
         <li><a href="#stats">Stats</a></li>
-        <li><a href="#team">Team</a></li>
+        <li><a href="#arsenal">Arsenal</a></li>
         <li><a href="#faq">FAQ</a></li>
       </ul>
       <div class="nav-actions">
@@ -141,22 +156,20 @@
         <canvas class="hero-wireframe" id="heroWireframe"></canvas>
       </div>
     </div>
+    <!-- Vertical ticker strip -->
     <div class="hero-ticker">
       <div class="ticker-item">
         <span class="ticker-value">10,000</span>
         <span class="ticker-label">Supply</span>
       </div>
-      <div class="ticker-dot"></div>
       <div class="ticker-item">
         <span class="ticker-value" data-target="200" id="tickerTraits">0</span>
         <span class="ticker-label">Traits</span>
       </div>
-      <div class="ticker-dot"></div>
       <div class="ticker-item">
         <span class="ticker-value">ERC-721</span>
         <span class="ticker-label">Standard</span>
       </div>
-      <div class="ticker-dot"></div>
       <div class="ticker-item">
         <span class="ticker-value">Ethereum</span>
         <span class="ticker-label">Chain</span>
@@ -164,78 +177,67 @@
     </div>
   </section>
 
-  <hr class="section-divider" aria-hidden="true" />
-
-  <!-- About Section -->
+  <!-- About Section — offset left panel -->
   <section class="about" id="about">
     <div class="hud-float hud-float-tl" aria-hidden="true">
       <span class="hud-float-text">SYS.STATUS: ACTIVE</span>
       <span class="hud-float-coord">47.3812° N</span>
     </div>
-    <div class="hud-float hud-float-br" aria-hidden="true">
-      <span class="hud-float-text">SECTOR 07-A</span>
-      <span class="hud-float-coord">122.4194° W</span>
-    </div>
-    <div class="container">
-      <div class="about-layout">
+    <div class="about-panel">
+      <div class="about-panel-inner">
         <div class="about-statement reveal-left">
           <h2>We're building the definitive NFT collection on Ethereum.</h2>
           <p>Not a fork. Not a derivative. Vanguard is original generative art
           backed by on-chain utility, DAO governance, and a community that
           actually ships.</p>
         </div>
-        <div class="about-features reveal-right">
-          <div class="feature-item reveal">
-            <div class="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
-            </div>
-            <div>
-              <h3>200+ Hand-Crafted Traits</h3>
-              <p>Each piece generated from a curated trait pool. No two are alike.</p>
-            </div>
-          </div>
-          <div class="feature-item reveal">
-            <div class="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 0 0-8 0v2"/></svg>
-            </div>
-            <div>
-              <h3>Fully On-Chain (ERC-721)</h3>
-              <p>Immutable metadata. Your ownership is permanent and verifiable.</p>
-            </div>
-          </div>
-          <div class="feature-item reveal">
-            <div class="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </div>
-            <div>
-              <h3>DAO Governance</h3>
-              <p>Holders vote on treasury, roadmap priorities, and partnerships.</p>
-            </div>
-          </div>
-          <div class="feature-item reveal">
-            <div class="feature-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-            </div>
-            <div>
-              <h3>$VNGRD Staking Rewards</h3>
-              <p>Stake your NFT. Earn tokens. Unlock premium ecosystem perks.</p>
-            </div>
-          </div>
+      </div>
+    </div>
+    <div class="about-features-float reveal-right">
+      <div class="feature-item reveal">
+        <div class="feature-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+        </div>
+        <div>
+          <h3>200+ Hand-Crafted Traits</h3>
+          <p>Each piece generated from a curated trait pool. No two are alike.</p>
+        </div>
+      </div>
+      <div class="feature-item reveal">
+        <div class="feature-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 0 0-8 0v2"/></svg>
+        </div>
+        <div>
+          <h3>Fully On-Chain (ERC-721)</h3>
+          <p>Immutable metadata. Your ownership is permanent and verifiable.</p>
+        </div>
+      </div>
+      <div class="feature-item reveal">
+        <div class="feature-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div>
+          <h3>DAO Governance</h3>
+          <p>Holders vote on treasury, roadmap priorities, and partnerships.</p>
+        </div>
+      </div>
+      <div class="feature-item reveal">
+        <div class="feature-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        </div>
+        <div>
+          <h3>$VNGRD Staking Rewards</h3>
+          <p>Stake your NFT. Earn tokens. Unlock premium ecosystem perks.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <hr class="section-divider" aria-hidden="true" />
-
-  <!-- Collection Section -->
+  <!-- Collection Section — split control panel -->
   <section class="collection" id="collection">
-    <div class="hud-float hud-float-tr" aria-hidden="true">
-      <span class="hud-float-text">ARCHIVE::LOADED</span>
-      <span class="hud-float-coord">10K UNITS</span>
-    </div>
-    <div class="container">
-      <div class="collection-header">
+    <div class="collection-split">
+      <div class="collection-sidebar">
+        <div class="sidebar-label" aria-hidden="true">ARCHIVE</div>
         <h2>The Collection</h2>
         <div class="filter-bar">
           <button class="filter-btn active" data-filter="all">All</button>
@@ -244,98 +246,94 @@
           <button class="filter-btn" data-filter="elite">Elite</button>
           <button class="filter-btn" data-filter="core">Core</button>
         </div>
+        <div class="sidebar-data" aria-hidden="true">
+          <span class="sidebar-data-label">TOTAL UNITS</span>
+          <span class="sidebar-data-value">10,000</span>
+        </div>
       </div>
-      <div class="nft-grid" id="nftGrid"></div>
+      <div class="collection-main">
+        <div class="nft-grid" id="nftGrid"></div>
+      </div>
     </div>
   </section>
 
-  <hr class="section-divider" aria-hidden="true" />
-
-  <!-- Roadmap Section -->
+  <!-- Roadmap Section — vertical zigzag timeline -->
   <section class="roadmap" id="roadmap">
     <div class="container">
       <h2 class="roadmap-title">Roadmap</h2>
     </div>
-    <div class="roadmap-scroll-wrapper">
-      <div class="roadmap-timeline">
-        <div class="timeline-line"></div>
-        <div class="timeline-node done">
-          <div class="node-dot"></div>
-          <div class="node-content">
-            <span class="node-phase">Phase 01</span>
-            <h3>Foundation</h3>
-            <ul>
-              <li>Smart contract dev & audit</li>
-              <li>Website & brand launch</li>
-              <li>Community building</li>
-              <li>Whitelist campaign</li>
-            </ul>
-            <span class="node-status complete">Complete</span>
-          </div>
+    <div class="roadmap-zigzag">
+      <div class="zigzag-line" aria-hidden="true"></div>
+      <div class="timeline-node done node-left">
+        <div class="node-dot"></div>
+        <div class="node-content">
+          <span class="node-phase">Phase 01</span>
+          <h3>Foundation</h3>
+          <ul>
+            <li>Smart contract dev & audit</li>
+            <li>Website & brand launch</li>
+            <li>Community building</li>
+            <li>Whitelist campaign</li>
+          </ul>
+          <span class="node-status complete">Complete</span>
         </div>
-        <div class="timeline-node done">
-          <div class="node-dot"></div>
-          <div class="node-content">
-            <span class="node-phase">Phase 02</span>
-            <h3>Launch</h3>
-            <ul>
-              <li>Public mint</li>
-              <li>Rarity rankings revealed</li>
-              <li>OpenSea & Blur listings</li>
-              <li>Holder verification</li>
-            </ul>
-            <span class="node-status complete">Complete</span>
-          </div>
+      </div>
+      <div class="timeline-node done node-right">
+        <div class="node-dot"></div>
+        <div class="node-content">
+          <span class="node-phase">Phase 02</span>
+          <h3>Launch</h3>
+          <ul>
+            <li>Public mint</li>
+            <li>Rarity rankings revealed</li>
+            <li>OpenSea & Blur listings</li>
+            <li>Holder verification</li>
+          </ul>
+          <span class="node-status complete">Complete</span>
         </div>
-        <div class="timeline-node active">
-          <div class="node-dot pulse"></div>
-          <div class="node-content">
-            <span class="node-phase">Phase 03</span>
-            <h3>Growth</h3>
-            <ul>
-              <li>$VNGRD token launch</li>
-              <li>Staking goes live</li>
-              <li>Merch store for holders</li>
-              <li>DAO governance</li>
-            </ul>
-            <span class="node-status in-progress">In Progress</span>
-          </div>
+      </div>
+      <div class="timeline-node active node-left">
+        <div class="node-dot pulse"></div>
+        <div class="node-content">
+          <span class="node-phase">Phase 03</span>
+          <h3>Growth</h3>
+          <ul>
+            <li>$VNGRD token launch</li>
+            <li>Staking goes live</li>
+            <li>Merch store for holders</li>
+            <li>DAO governance</li>
+          </ul>
+          <span class="node-status in-progress">In Progress</span>
         </div>
-        <div class="timeline-node upcoming">
-          <div class="node-dot"></div>
-          <div class="node-content">
-            <span class="node-phase">Phase 04</span>
-            <h3>Expansion</h3>
-            <ul>
-              <li>Utility platform beta</li>
-              <li>NFT upgrades & customization</li>
-              <li>Cross-chain expansion</li>
-              <li>Strategic partnerships</li>
-            </ul>
-            <span class="node-status">Upcoming</span>
-          </div>
+      </div>
+      <div class="timeline-node upcoming node-right">
+        <div class="node-dot"></div>
+        <div class="node-content">
+          <span class="node-phase">Phase 04</span>
+          <h3>Expansion</h3>
+          <ul>
+            <li>Utility platform beta</li>
+            <li>NFT upgrades & customization</li>
+            <li>Cross-chain expansion</li>
+            <li>Strategic partnerships</li>
+          </ul>
+          <span class="node-status">Upcoming</span>
         </div>
       </div>
     </div>
   </section>
 
-  <hr class="section-divider" aria-hidden="true" />
-
-  <!-- Community Stats Section -->
+  <!-- Community Stats Section — bento grid -->
   <section class="stats" id="stats">
     <div class="hud-float hud-float-tl" aria-hidden="true">
       <span class="hud-float-text">DATA.STREAM</span>
       <span class="hud-float-coord">LIVE FEED</span>
     </div>
-    <div class="hud-float hud-float-br" aria-hidden="true">
-      <span class="hud-float-text">UPLINK OK</span>
-      <span class="hud-float-coord">LATENCY: 12ms</span>
-    </div>
     <div class="container">
       <h2 class="stats-title reveal-mask">Community Stats</h2>
       <p class="stats-subtitle">The numbers behind the movement.</p>
-      <div class="stats-grid">
-        <div class="stat-card reveal">
+      <div class="stats-bento">
+        <div class="stat-card stat-featured reveal">
           <div class="stat-icon" style="--stat-color: #4cc98a;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
@@ -367,61 +365,29 @@
     </div>
   </section>
 
-  <hr class="section-divider" aria-hidden="true" />
-
-  <!-- Team / Founders Section -->
-  <section class="team" id="team">
+  <!-- Arsenal / Showcase Reel -->
+  <section class="arsenal" id="arsenal">
     <div class="container">
-      <h2 class="team-title reveal-mask">The Operators</h2>
-      <p class="team-subtitle">The minds behind the mecha.</p>
-      <div class="team-grid">
-        <div class="team-card reveal" data-delay="1">
-          <div class="team-avatar">
-            <div class="team-avatar-pattern" style="background: conic-gradient(from 0deg at 50% 50%, #4cc98a, #0a2a1a, #8be8b8, #0a2a1a, #4cc98a);"></div>
-            <div class="team-avatar-hud"></div>
-          </div>
-          <div class="team-info">
-            <span class="team-callsign">// COMMANDER</span>
-            <h3 class="team-name">Drei D</h3>
-            <p class="team-role">Founder & Lead Developer</p>
-            <p class="team-bio">Full-stack architect building at the intersection of blockchain and generative art.</p>
-          </div>
-        </div>
-        <div class="team-card reveal" data-delay="2">
-          <div class="team-avatar">
-            <div class="team-avatar-pattern" style="background: conic-gradient(from 120deg at 50% 50%, #4cd4c9, #0a1a2a, #8be8e0, #0a1a2a, #4cd4c9);"></div>
-            <div class="team-avatar-hud"></div>
-          </div>
-          <div class="team-info">
-            <span class="team-callsign">// ARCHITECT</span>
-            <h3 class="team-name">Nova X</h3>
-            <p class="team-role">Creative Director</p>
-            <p class="team-bio">Visual designer specializing in futuristic aesthetics and generative systems.</p>
-          </div>
-        </div>
-        <div class="team-card reveal" data-delay="3">
-          <div class="team-avatar">
-            <div class="team-avatar-pattern" style="background: conic-gradient(from 240deg at 50% 50%, #c084fc, #1a0a2a, #d4a0ff, #1a0a2a, #c084fc);"></div>
-            <div class="team-avatar-hud"></div>
-          </div>
-          <div class="team-info">
-            <span class="team-callsign">// STRATEGIST</span>
-            <h3 class="team-name">Phantom</h3>
-            <p class="team-role">Community & Partnerships</p>
-            <p class="team-bio">Web3 community builder with 5+ years growing DAOs and NFT ecosystems.</p>
-          </div>
-        </div>
+      <div class="arsenal-header">
+        <h2 class="arsenal-title reveal-mask">The Arsenal</h2>
+        <p class="arsenal-subtitle">The rarest units in the collection.</p>
+      </div>
+    </div>
+    <div class="arsenal-track-wrapper">
+      <div class="arsenal-track" id="arsenalTrack">
+        <!-- Cards generated via JS -->
       </div>
     </div>
   </section>
 
-  <hr class="section-divider" aria-hidden="true" />
-
-  <!-- FAQ Section -->
+  <!-- FAQ Section — sticky split -->
   <section class="faq" id="faq">
     <div class="container">
-      <div class="faq-layout">
-        <h2 class="faq-title">FAQ</h2>
+      <div class="faq-split">
+        <div class="faq-sticky">
+          <h2 class="faq-title">FAQ</h2>
+          <p class="faq-intro">Everything you need to know about Vanguard, minting, and the ecosystem.</p>
+        </div>
         <div class="faq-list">
           <div class="faq-item">
             <button class="faq-question">
@@ -473,18 +439,31 @@
     </div>
   </section>
 
-  <!-- Footer -->
+  <!-- Footer — angular top -->
   <footer class="footer">
     <div class="container">
-      <div class="footer-row">
-        <a href="#" class="logo">VANGUARD</a>
-        <div class="footer-links">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="logo">VANGUARD</a>
+          <p class="footer-tagline">The future of digital collectibles.</p>
+        </div>
+        <div class="footer-nav">
+          <span class="footer-nav-label">Navigate</span>
+          <a href="#about">About</a>
+          <a href="#collection">Collection</a>
+          <a href="#roadmap">Roadmap</a>
+          <a href="#faq">FAQ</a>
+        </div>
+        <div class="footer-social">
+          <span class="footer-nav-label">Connect</span>
           <a href="#">Twitter / X</a>
           <a href="#">Discord</a>
           <a href="#">OpenSea</a>
           <a href="#">Etherscan</a>
         </div>
-        <p class="footer-copy">&copy; 2026 Vanguard</p>
+      </div>
+      <div class="footer-bottom">
+        <p class="footer-copy">&copy; 2026 Vanguard. All rights reserved.</p>
       </div>
     </div>
   </footer>
@@ -517,6 +496,21 @@
     <svg class="mute-icon-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
   </button>
 
-  <script src="js/app.js"></script>
+  <!-- Component JS (load order matters) -->
+  <script src="js/effects.js"></script>
+  <script src="js/hero-canvas.js"></script>
+  <script src="js/hero-wireframe.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/cursor.js"></script>
+  <script src="js/nft-effects.js"></script>
+  <script src="js/nft-cards.js"></script>
+  <script src="js/nft-filter.js"></script>
+  <script src="js/nft-modal.js"></script>
+  <script src="js/faq.js"></script>
+  <script src="js/reveal.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/arsenal.js"></script>
+  <script src="js/scroll.js"></script>
+  <script src="js/transition.js"></script>
 </body>
 </html>

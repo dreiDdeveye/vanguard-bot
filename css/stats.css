@@ -1,0 +1,241 @@
+/* ===== STATS ===== */
+/* Stats bento, stat-card, stat-icon, stat-value, stat-label, animated gradient borders */
+
+.stats {
+  padding: 140px 0 120px;
+  position: relative;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.stats::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 100px, rgba(76, 201, 138, 0.01) 100px, rgba(76, 201, 138, 0.01) 101px),
+    repeating-linear-gradient(90deg, transparent, transparent 100px, rgba(76, 201, 138, 0.008) 100px, rgba(76, 201, 138, 0.008) 101px);
+  transform: translateY(var(--parallax-y, 0));
+  will-change: transform;
+}
+
+.stats::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 15% 50%, rgba(76, 201, 138, 0.04) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 50%, rgba(76, 201, 138, 0.03) 0%, transparent 45%);
+  transform: translateY(calc(var(--parallax-y, 0) * -1.5));
+  will-change: transform;
+}
+
+.stats-title {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3.2vw, 38px);
+  font-weight: 700;
+  letter-spacing: 3px;
+  margin-bottom: 10px;
+  color: var(--text-bright);
+  text-transform: uppercase;
+  position: relative;
+  z-index: 1;
+}
+
+.stats-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 60px;
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
+  position: relative;
+  z-index: 1;
+}
+
+.stats-bento {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.stat-card {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--stat-color, var(--gold));
+  border-radius: 0;
+  padding: 36px 24px;
+  text-align: left;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.45s ease, filter 0.45s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card.stat-featured {
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px 36px;
+}
+
+/* HUD corner brackets */
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 14px;
+  height: 14px;
+  border-top: 1px solid var(--stat-color, var(--gold));
+  border-left: 1px solid var(--stat-color, var(--gold));
+  opacity: 0.5;
+  transition: all 0.4s ease;
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 14px;
+  height: 14px;
+  border-bottom: 1px solid var(--stat-color, var(--gold));
+  border-right: 1px solid var(--stat-color, var(--gold));
+  opacity: 0.5;
+  transition: all 0.4s ease;
+}
+
+.stat-card:hover::before,
+.stat-card:hover::after {
+  opacity: 1;
+  width: 20px;
+  height: 20px;
+}
+
+.stat-card:hover {
+  border-color: var(--gold-border);
+  transform: translateY(-6px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 22px;
+  background: color-mix(in srgb, var(--stat-color, var(--gold)) 8%, transparent);
+  color: var(--stat-color, var(--gold));
+  border: 1px solid color-mix(in srgb, var(--stat-color, var(--gold)) 12%, transparent);
+  transition: all 0.3s ease;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+.stat-card:hover .stat-icon {
+  transform: scale(1.08);
+  background: color-mix(in srgb, var(--stat-color, var(--gold)) 14%, transparent);
+}
+
+.stat-value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 2.5vw, 34px);
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  color: var(--text-bright);
+}
+
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+
+/* ===== ANIMATED GRADIENT BORDERS ===== */
+.glow-border {
+  position: relative;
+}
+
+.glow-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  background: conic-gradient(
+    from var(--border-angle, 0deg),
+    transparent 0%,
+    var(--gold) 10%,
+    var(--accent-cyan) 20%,
+    transparent 30%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  animation: rotateBorder 4s linear infinite;
+}
+
+.glow-border:hover::before {
+  opacity: 1;
+}
+
+@keyframes rotateBorder {
+  to { --border-angle: 360deg; }
+}
+
+/* Fallback: animate via transform rotation wrapper */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card .glow-border-line {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.stat-card:hover .glow-border-line {
+  opacity: 1;
+}
+
+.stat-card .glow-border-line::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  height: 200%;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    var(--gold) 8%,
+    var(--accent-cyan) 16%,
+    transparent 24%,
+    transparent 100%
+  );
+  animation: spinBorder 3s linear infinite;
+}
+
+@keyframes spinBorder {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.stat-card .glow-border-inner {
+  position: absolute;
+  inset: 1px;
+  background: var(--bg-glass);
+  z-index: 0;
+}

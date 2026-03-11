@@ -1,0 +1,210 @@
+/* ===== BASE ===== */
+/* Reset, :root variables, body, noise, scanlines, beams, embers, cursor-glow, .container */
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #050807;
+  --bg-secondary: #080c0a;
+  --bg-glass: rgba(8, 14, 11, 0.6);
+  --bg-glass-solid: rgba(12, 20, 16, 0.85);
+  --gold: #4cc98a;
+  --gold-light: #8be8b8;
+  --gold-dim: rgba(76, 201, 138, 0.12);
+  --gold-glow: rgba(76, 201, 138, 0.35);
+  --gold-border: rgba(76, 201, 138, 0.18);
+  --accent-cyan: #4cd4c9;
+  --accent-cyan-dim: rgba(76, 212, 201, 0.1);
+  --text: #d5e0da;
+  --text-bright: #eef5f1;
+  --text-secondary: #78918a;
+  --text-muted: #3d4a44;
+  --border: rgba(76, 201, 138, 0.07);
+  --border-light: rgba(76, 201, 138, 0.14);
+  --radius: 2px;
+  --radius-lg: 3px;
+  --cut: 14px;
+  --cut-sm: 8px;
+  --font: 'Exo 2', sans-serif;
+  --font-display: 'Chakra Petch', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 90px;
+  cursor: none !important;
+}
+
+*, *::before, *::after {
+  cursor: none !important;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  font-weight: 400;
+}
+
+/* Noise */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* Scanlines overlay */
+.scanlines {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(76, 201, 138, 0.008) 2px,
+    rgba(76, 201, 138, 0.008) 4px
+  );
+}
+
+/* Sweeping light beams */
+.light-beams {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.beam {
+  position: absolute;
+  width: 1px;
+  height: 200vh;
+  background: linear-gradient(180deg, transparent, rgba(76, 201, 138, 0.04) 20%, rgba(76, 201, 138, 0.08) 50%, rgba(76, 201, 138, 0.04) 80%, transparent);
+  transform-origin: top center;
+}
+
+.beam-1 {
+  left: 15%;
+  top: -50%;
+  transform: rotate(25deg);
+  animation: beamSweep 18s ease-in-out infinite;
+}
+
+.beam-2 {
+  left: 55%;
+  top: -50%;
+  transform: rotate(-15deg);
+  animation: beamSweep 22s ease-in-out infinite reverse;
+  animation-delay: -6s;
+  opacity: 0.6;
+}
+
+.beam-3 {
+  left: 80%;
+  top: -50%;
+  transform: rotate(10deg);
+  animation: beamSweep 26s ease-in-out infinite;
+  animation-delay: -12s;
+  opacity: 0.4;
+}
+
+@keyframes beamSweep {
+  0%, 100% { transform: rotate(-20deg) translateX(-100px); opacity: 0; }
+  15% { opacity: 1; }
+  50% { transform: rotate(20deg) translateX(100px); opacity: 0.7; }
+  85% { opacity: 1; }
+}
+
+/* Rising embers — square mecha particles */
+.embers {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.ember {
+  position: absolute;
+  bottom: -10px;
+  width: 3px;
+  height: 3px;
+  border-radius: 0;
+  background: var(--gold);
+  opacity: 0;
+  animation: emberRise linear infinite;
+  transform: rotate(45deg);
+  will-change: transform;
+}
+
+.ember-1  { left: 5%;  animation-duration: 12s; animation-delay: 0s; }
+.ember-2  { left: 15%; animation-duration: 16s; animation-delay: -2s; width: 2px; height: 2px; }
+.ember-3  { left: 28%; animation-duration: 14s; animation-delay: -5s; }
+.ember-4  { left: 38%; animation-duration: 18s; animation-delay: -8s; width: 2px; height: 2px; }
+.ember-5  { left: 50%; animation-duration: 13s; animation-delay: -3s; }
+.ember-6  { left: 62%; animation-duration: 17s; animation-delay: -10s; width: 4px; height: 4px; }
+.ember-7  { left: 72%; animation-duration: 15s; animation-delay: -1s; width: 2px; height: 2px; }
+.ember-8  { left: 82%; animation-duration: 19s; animation-delay: -7s; }
+.ember-9  { left: 90%; animation-duration: 14s; animation-delay: -4s; width: 2px; height: 2px; }
+.ember-10 { left: 42%; animation-duration: 20s; animation-delay: -12s; }
+.ember-11 { left: 22%; animation-duration: 16s; animation-delay: -9s; width: 4px; height: 4px; }
+.ember-12 { left: 75%; animation-duration: 15s; animation-delay: -6s; }
+
+@keyframes emberRise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) translateX(0) rotate(45deg) scale(1);
+  }
+  5% { opacity: 0.7; }
+  40% {
+    opacity: 0.4;
+    transform: translateY(-40vh) translateX(20px) rotate(45deg) scale(0.8);
+  }
+  70% {
+    opacity: 0.2;
+    transform: translateY(-70vh) translateX(-15px) rotate(45deg) scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-105vh) translateX(10px) rotate(45deg) scale(0.2);
+  }
+}
+
+/* Cursor glow — angular */
+.cursor-glow {
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  border-radius: 0;
+  background: radial-gradient(circle, rgba(76, 201, 138, 0.06) 0%, transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(45deg);
+  transition: opacity 0.4s ease;
+}
+
+.cursor-glow.visible {
+  opacity: 1;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
