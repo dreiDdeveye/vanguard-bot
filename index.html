@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VANGUARD | Premium NFT Collection</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- Noise overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- Sweeping light beams -->
+  <div class="light-beams" aria-hidden="true">
+    <div class="beam beam-1"></div>
+    <div class="beam beam-2"></div>
+    <div class="beam beam-3"></div>
+  </div>
+
+  <!-- Rising embers -->
+  <div class="embers" aria-hidden="true">
+    <div class="ember ember-1"></div>
+    <div class="ember ember-2"></div>
+    <div class="ember ember-3"></div>
+    <div class="ember ember-4"></div>
+    <div class="ember ember-5"></div>
+    <div class="ember ember-6"></div>
+    <div class="ember ember-7"></div>
+    <div class="ember ember-8"></div>
+    <div class="ember ember-9"></div>
+    <div class="ember ember-10"></div>
+    <div class="ember ember-11"></div>
+    <div class="ember ember-12"></div>
+  </div>
+
+  <!-- Cursor glow (hero only) -->
+  <div class="cursor-glow" id="cursorGlow"></div>
+
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="#" class="logo">VANGUARD</a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#home">Home</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#collection">Collection</a></li>
+        <li><a href="#mint">Mint</a></li>
+        <li><a href="#roadmap">Roadmap</a></li>
+        <li><a href="#stats">Stats</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button class="btn btn-primary" id="connectWallet">Connect Wallet</button>
+        <button class="hamburger" id="hamburger">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero" id="home">
+    <canvas class="hero-particles" id="heroParticles" aria-hidden="true"></canvas>
+    <div class="hero-mesh" aria-hidden="true"></div>
+    <div class="hero-inner">
+      <div class="hero-text">
+        <span class="hero-badge">MINTING NOW</span>
+        <h1 class="hero-title">Collect the<br /><span class="accent-gradient">Uncollected.</span></h1>
+        <p class="hero-desc">
+          10,000 algorithmically crafted NFTs on Ethereum. Not another
+          copy-paste pfp project &mdash; Vanguard is art, utility, and community
+          fused into one.
+        </p>
+        <div class="hero-buttons">
+          <a href="#mint" class="btn btn-accent btn-lg">Mint Now</a>
+          <a href="#collection" class="btn btn-ghost btn-lg">View Collection</a>
+        </div>
+      </div>
+      <div class="hero-card-wrapper">
+        <div class="hero-featured-card" id="heroCard">
+          <div class="hero-card-pattern"></div>
+          <div class="hero-card-info">
+            <span class="hero-card-name">Vanguard #0001</span>
+            <span class="hero-card-rarity">Genesis</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-ticker">
+      <div class="ticker-item">
+        <span class="ticker-value" data-target="3400" id="tickerMinted">0</span>
+        <span class="ticker-label">Minted</span>
+      </div>
+      <div class="ticker-sep">/</div>
+      <div class="ticker-item">
+        <span class="ticker-value">10,000</span>
+        <span class="ticker-label">Supply</span>
+      </div>
+      <div class="ticker-dot"></div>
+      <div class="ticker-item">
+        <span class="ticker-value">0.08 ETH</span>
+        <span class="ticker-label">Price</span>
+      </div>
+      <div class="ticker-dot"></div>
+      <div class="ticker-item">
+        <span class="ticker-value" data-target="200" id="tickerTraits">0</span>
+        <span class="ticker-label">Traits</span>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider" aria-hidden="true" />
+
+  <!-- About Section -->
+  <section class="about" id="about">
+    <div class="container">
+      <div class="about-layout">
+        <div class="about-statement reveal-left">
+          <h2>We're building the definitive NFT collection on Ethereum.</h2>
+          <p>Not a fork. Not a derivative. Vanguard is original generative art
+          backed by on-chain utility, DAO governance, and a community that
+          actually ships.</p>
+        </div>
+        <div class="about-features reveal-right">
+          <div class="feature-item reveal">
+            <div class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+            </div>
+            <div>
+              <h3>200+ Hand-Crafted Traits</h3>
+              <p>Each piece generated from a curated trait pool. No two are alike.</p>
+            </div>
+          </div>
+          <div class="feature-item reveal">
+            <div class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 0 0-8 0v2"/></svg>
+            </div>
+            <div>
+              <h3>Fully On-Chain (ERC-721)</h3>
+              <p>Immutable metadata. Your ownership is permanent and verifiable.</p>
+            </div>
+          </div>
+          <div class="feature-item reveal">
+            <div class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div>
+              <h3>DAO Governance</h3>
+              <p>Holders vote on treasury, roadmap priorities, and partnerships.</p>
+            </div>
+          </div>
+          <div class="feature-item reveal">
+            <div class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            </div>
+            <div>
+              <h3>$VNGRD Staking Rewards</h3>
+              <p>Stake your NFT. Earn tokens. Unlock premium ecosystem perks.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider" aria-hidden="true" />
+
+  <!-- Collection Section -->
+  <section class="collection" id="collection">
+    <div class="container">
+      <div class="collection-header">
+        <h2>The Collection</h2>
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="genesis">Genesis</button>
+          <button class="filter-btn" data-filter="ascended">Ascended</button>
+          <button class="filter-btn" data-filter="elite">Elite</button>
+          <button class="filter-btn" data-filter="core">Core</button>
+        </div>
+      </div>
+      <div class="nft-grid" id="nftGrid"></div>
+    </div>
+  </section>
+
+  <hr class="section-divider" aria-hidden="true" />
+
+  <!-- Mint Section -->
+  <section class="mint-section" id="mint">
+    <div class="container">
+      <div class="mint-panel">
+        <div class="mint-panel-inner reveal-scale">
+          <div class="mint-header">
+            <span class="mint-label">MINT INTERFACE</span>
+            <div class="mint-live-dot"></div>
+          </div>
+          <div class="mint-big-number">
+            <span id="mintedDisplay">3,400</span>
+            <span class="mint-big-sep">/</span>
+            <span class="mint-big-total">10,000</span>
+          </div>
+          <div class="mint-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 34%"></div>
+            </div>
+          </div>
+          <div class="mint-details-row">
+            <div class="mint-detail"><span>Price</span><strong>0.08 ETH</strong></div>
+            <div class="mint-detail"><span>Max / wallet</span><strong>5</strong></div>
+            <div class="mint-detail"><span>Chain</span><strong>Ethereum</strong></div>
+          </div>
+          <div class="mint-counter">
+            <button class="counter-btn" id="mintMinus">&minus;</button>
+            <span class="counter-value" id="mintCount">1</span>
+            <button class="counter-btn" id="mintPlus">+</button>
+          </div>
+          <div class="mint-total">
+            <span>Total</span>
+            <span id="mintPrice">0.08 ETH</span>
+          </div>
+          <button class="btn btn-accent btn-full" id="mintBtn">Mint Now</button>
+          <p class="mint-note">Gas fees not included. Connect wallet to proceed.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider" aria-hidden="true" />
+
+  <!-- Roadmap Section -->
+  <section class="roadmap" id="roadmap">
+    <div class="container">
+      <h2 class="roadmap-title">Roadmap</h2>
+    </div>
+    <div class="roadmap-scroll-wrapper">
+      <div class="roadmap-timeline">
+        <div class="timeline-line"></div>
+        <div class="timeline-node done">
+          <div class="node-dot"></div>
+          <div class="node-content">
+            <span class="node-phase">Phase 01</span>
+            <h3>Foundation</h3>
+            <ul>
+              <li>Smart contract dev & audit</li>
+              <li>Website & brand launch</li>
+              <li>Community building</li>
+              <li>Whitelist campaign</li>
+            </ul>
+            <span class="node-status complete">Complete</span>
+          </div>
+        </div>
+        <div class="timeline-node done">
+          <div class="node-dot"></div>
+          <div class="node-content">
+            <span class="node-phase">Phase 02</span>
+            <h3>Launch</h3>
+            <ul>
+              <li>Public mint</li>
+              <li>Rarity rankings revealed</li>
+              <li>OpenSea & Blur listings</li>
+              <li>Holder verification</li>
+            </ul>
+            <span class="node-status complete">Complete</span>
+          </div>
+        </div>
+        <div class="timeline-node active">
+          <div class="node-dot pulse"></div>
+          <div class="node-content">
+            <span class="node-phase">Phase 03</span>
+            <h3>Growth</h3>
+            <ul>
+              <li>$VNGRD token launch</li>
+              <li>Staking goes live</li>
+              <li>Merch store for holders</li>
+              <li>DAO governance</li>
+            </ul>
+            <span class="node-status in-progress">In Progress</span>
+          </div>
+        </div>
+        <div class="timeline-node upcoming">
+          <div class="node-dot"></div>
+          <div class="node-content">
+            <span class="node-phase">Phase 04</span>
+            <h3>Expansion</h3>
+            <ul>
+              <li>Utility platform beta</li>
+              <li>NFT upgrades & customization</li>
+              <li>Cross-chain expansion</li>
+              <li>Strategic partnerships</li>
+            </ul>
+            <span class="node-status">Upcoming</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider" aria-hidden="true" />
+
+  <!-- Community Stats Section -->
+  <section class="stats" id="stats">
+    <div class="container">
+      <h2 class="stats-title reveal-left">Community Stats</h2>
+      <p class="stats-subtitle">The numbers behind the movement.</p>
+      <div class="stats-grid">
+        <div class="stat-card reveal">
+          <div class="stat-icon" style="--stat-color: #c9a84c;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <span class="stat-value" data-target="8200">0</span>
+          <span class="stat-label">Holders</span>
+        </div>
+        <div class="stat-card reveal">
+          <div class="stat-icon" style="--stat-color: #e8d48b;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <span class="stat-value">12.4K ETH</span>
+          <span class="stat-label">Total Volume</span>
+        </div>
+        <div class="stat-card reveal">
+          <div class="stat-icon" style="--stat-color: #c9a84c;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <span class="stat-value">0.32 ETH</span>
+          <span class="stat-label">Floor Price</span>
+        </div>
+        <div class="stat-card reveal">
+          <div class="stat-icon" style="--stat-color: #e8d48b;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <span class="stat-value" data-target="24500">0</span>
+          <span class="stat-label">Discord Members</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider" aria-hidden="true" />
+
+  <!-- FAQ Section -->
+  <section class="faq" id="faq">
+    <div class="container">
+      <div class="faq-layout">
+        <h2 class="faq-title">FAQ</h2>
+        <div class="faq-list">
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>What is Vanguard?</span>
+              <svg class="faq-icon" viewBox="0 0 24 24" width="20" height="20"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <div class="faq-answer">
+              <p>Vanguard is a collection of 10,000 unique, algorithmically generated NFTs on the Ethereum blockchain. Each piece features distinct visual traits and rarity levels.</p>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>How much does it cost to mint?</span>
+              <svg class="faq-icon" viewBox="0 0 24 24" width="20" height="20"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <div class="faq-answer">
+              <p>Each Vanguard NFT costs 0.08 ETH to mint, plus gas fees. You can mint up to 5 per transaction.</p>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>When is the mint date?</span>
+              <svg class="faq-icon" viewBox="0 0 24 24" width="20" height="20"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <div class="faq-answer">
+              <p>Minting is live right now. Connect your wallet and mint directly from this site.</p>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>What blockchain is Vanguard on?</span>
+              <svg class="faq-icon" viewBox="0 0 24 24" width="20" height="20"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <div class="faq-answer">
+              <p>Vanguard is built on Ethereum (ERC-721). Cross-chain expansion is planned for Phase 04.</p>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>What utility do holders get?</span>
+              <svg class="faq-icon" viewBox="0 0 24 24" width="20" height="20"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <div class="faq-answer">
+              <p>Holders get DAO governance access, $VNGRD token airdrops, staking rewards, exclusive merch, and early access to future platform features.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-row">
+        <a href="#" class="logo">VANGUARD</a>
+        <div class="footer-links">
+          <a href="#">Twitter / X</a>
+          <a href="#">Discord</a>
+          <a href="#">OpenSea</a>
+          <a href="#">Etherscan</a>
+        </div>
+        <p class="footer-copy">&copy; 2026 Vanguard</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
