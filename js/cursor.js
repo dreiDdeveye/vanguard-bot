@@ -29,8 +29,8 @@ hero.addEventListener('mousemove', (e) => {
   });
 
   function updateCursor() {
-    cursorX += (mouseX - cursorX) * 0.15;
-    cursorY += (mouseY - cursorY) * 0.15;
+    cursorX += (mouseX - cursorX) * 0.45;
+    cursorY += (mouseY - cursorY) * 0.45;
     cursor.style.left = cursorX + 'px';
     cursor.style.top = cursorY + 'px';
     requestAnimationFrame(updateCursor);
