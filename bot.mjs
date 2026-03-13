@@ -133,14 +133,34 @@ function computeTA(candles) {
   const aligned = ema9[last] > ema21[last] && ema21[last] > ema50[last] ? 'BULLISH' :
                   ema9[last] < ema21[last] && ema21[last] < ema50[last] ? 'BEARISH' : 'MIXED';
 
+  const rsiPrev = rsi14[last - 1];
+  const rsiDelta = (rsi14[last] != null && rsiPrev != null) ? rsi14[last] - rsiPrev : 0;
+  const macdHistPrev = macdData.histogram[last - 1];
+  const macdHistDelta = macdData.histogram[last] - macdHistPrev;
+  const ret1 = ((closes[last] - closes[last - 1]) / closes[last - 1]) * 100;
+  const ret3 = last >= 3 ? ((closes[last] - closes[last - 3]) / closes[last - 3]) * 100 : 0;
+  let recentBullCandles = 0, recentBearCandles = 0;
+  for (let i = last; i >= Math.max(0, last - 2); i--) {
+    if (candles[i].close > candles[i].open) recentBullCandles++;
+    else recentBearCandles++;
+  }
+  const ema9Slope = last >= 3 ? ((ema9[last] - ema9[last - 3]) / ema9[last - 3]) * 100 : 0;
+
   return {
     price: closes[last],
     rsi: rsi14[last],
+    rsiDelta,
     macdHist: macdData.histogram[last],
+    macdHistDelta,
     macdCrossing: Math.sign(macdData.histogram[last]) !== Math.sign(macdData.histogram[last - 1]),
     emaAligned: aligned,
+    ema9Slope,
     vwapDist: ((closes[last] - vwapData[last]) / vwapData[last] * 100),
     volZScore: volZ[last],
+    ret1,
+    ret3,
+    recentBullCandles,
+    recentBearCandles,
   };
 }
 
@@ -317,60 +337,102 @@ async function loadStats() {
 function makePrediction() {
   let bullScore = 0;
   let bearScore = 0;
+  const ta = state.ta;
 
-  // 1. Price momentum vs PTB
-  if (state.btcPrice && state.priceToBeat) {
-    const diff = state.btcPrice - state.priceToBeat;
-    const pctDiff = (diff / state.priceToBeat) * 100;
-    if (diff > 0) bullScore += Math.min(pctDiff * 10, 3);
-    else bearScore += Math.min(Math.abs(pctDiff) * 10, 3);
-  }
-
-  // 2. RSI
-  if (state.ta && state.ta.rsi != null) {
-    if (state.ta.rsi > 65) bearScore += 1.5;
-    else if (state.ta.rsi < 35) bullScore += 1.5;
-    else if (state.ta.rsi > 50) bullScore += 0.5;
-    else bearScore += 0.5;
-  }
-
-  // 3. MACD
-  if (state.ta && state.ta.macdHist != null) {
-    if (state.ta.macdHist > 0) bullScore += 1;
-    else bearScore += 1;
-    if (state.ta.macdCrossing) {
-      if (state.ta.macdHist > 0) bullScore += 1;
-      else bearScore += 1;
-    }
-  }
-
-  // 4. EMA alignment
-  if (state.ta && state.ta.emaAligned) {
-    if (state.ta.emaAligned === 'BULLISH') bullScore += 1.5;
-    else if (state.ta.emaAligned === 'BEARISH') bearScore += 1.5;
-  }
-
-  // 5. VWAP
-  if (state.ta && state.ta.vwapDist != null) {
-    if (state.ta.vwapDist > 0.05) bullScore += 0.5;
-    else if (state.ta.vwapDist < -0.05) bearScore += 0.5;
-  }
-
-  // 6. Volume
-  if (state.ta && state.ta.volZScore != null && state.ta.volZScore > 1.5) {
-    if (state.btcPrice > state.priceToBeat) bullScore += 1;
-    else bearScore += 1;
-  }
-
-  // 7. Market odds
+  // 1. MARKET ODDS — PRIMARY (smart money)
   if (state.upPct && state.downPct) {
     const up = parseFloat(state.upPct);
     const down = parseFloat(state.downPct);
-    if (up > 55) bullScore += 1;
-    else if (down > 55) bearScore += 1;
+    if (up > 65) bullScore += 3;
+    else if (down > 65) bearScore += 3;
+    else if (up > 55) bullScore += 1.5;
+    else if (down > 55) bearScore += 1.5;
   }
 
-  const isOver = bullScore >= bearScore;
+  // 2. MEAN-REVERSION — Price vs PTB + momentum direction
+  if (state.btcPrice && state.priceToBeat && ta) {
+    const diff = state.btcPrice - state.priceToBeat;
+    const pctDiff = (diff / state.priceToBeat) * 100;
+    const abovePTB = diff > 0;
+
+    if (abovePTB) {
+      const fading = (ta.rsiDelta < 0) || (ta.macdHistDelta < 0) || (ta.ema9Slope < 0);
+      const bearCandles = ta.recentBearCandles >= 2;
+      if (fading || bearCandles) bearScore += 2;
+      else bullScore += Math.min(pctDiff * 5, 2);
+    } else {
+      const recovering = (ta.rsiDelta > 0) || (ta.macdHistDelta > 0) || (ta.ema9Slope > 0);
+      const bullCandles = ta.recentBullCandles >= 2;
+      if (recovering || bullCandles) bullScore += 2;
+      else bearScore += Math.min(Math.abs(pctDiff) * 5, 2);
+    }
+  }
+
+  // 3. VWAP — Most reliable for 5m
+  if (ta && ta.vwapDist != null) {
+    if (ta.vwapDist > 0.05) bullScore += 1.5;
+    else if (ta.vwapDist < -0.05) bearScore += 1.5;
+  }
+
+  // 4. EMA alignment
+  if (ta && ta.emaAligned) {
+    if (ta.emaAligned === 'BULLISH') bullScore += 1;
+    else if (ta.emaAligned === 'BEARISH') bearScore += 1;
+  }
+
+  // 5. RSI extremes + direction
+  if (ta && ta.rsi != null) {
+    if (ta.rsi > 70) bearScore += 2;
+    else if (ta.rsi < 30) bullScore += 2;
+    else if (ta.rsiDelta > 2) bullScore += 0.5;
+    else if (ta.rsiDelta < -2) bearScore += 0.5;
+  }
+
+  // 6. MACD crossings + direction
+  if (ta && ta.macdHist != null) {
+    if (ta.macdCrossing) {
+      if (ta.macdHist > 0) bullScore += 1.5;
+      else bearScore += 1.5;
+    } else {
+      if (ta.macdHist > 0 && ta.macdHistDelta > 0) bullScore += 0.5;
+      else if (ta.macdHist < 0 && ta.macdHistDelta < 0) bearScore += 0.5;
+      else if (ta.macdHist > 0 && ta.macdHistDelta < 0) bearScore += 0.5;
+      else if (ta.macdHist < 0 && ta.macdHistDelta > 0) bullScore += 0.5;
+    }
+  }
+
+  // 7. Volume confirms or fades
+  if (ta && ta.volZScore != null) {
+    if (ta.volZScore > 2) {
+      if (ta.ret1 > 0) bullScore += 1;
+      else bearScore += 1;
+    } else if (ta.volZScore < -1) {
+      if (state.btcPrice > state.priceToBeat) bearScore += 0.5;
+      else bullScore += 0.5;
+    }
+  }
+
+  // 8. Recent candle pattern
+  if (ta) {
+    if (ta.recentBullCandles === 3) bullScore += 0.5;
+    else if (ta.recentBearCandles === 3) bearScore += 0.5;
+  }
+
+  // 9. Short-term momentum
+  if (ta && ta.ret3 != null) {
+    if (ta.ret3 > 0.1) bullScore += 0.5;
+    else if (ta.ret3 < -0.1) bearScore += 0.5;
+  }
+
+  // Tiebreaker: market odds
+  let isOver;
+  if (bullScore === bearScore) {
+    const up = parseFloat(state.upPct || 50);
+    const down = parseFloat(state.downPct || 50);
+    isOver = up >= down;
+  } else {
+    isOver = bullScore > bearScore;
+  }
   const totalScore = bullScore + bearScore;
   const confPct = totalScore > 0 ? (Math.max(bullScore, bearScore) / totalScore * 100) : 50;
   const margin = Math.abs(bullScore - bearScore);
