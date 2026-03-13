@@ -132,10 +132,105 @@
 }
 
 @media (max-width: 768px) {
-  .nft-grid {
-    grid-template-columns: repeat(2, 1fr);
+  /* ---- Reduce section padding ---- */
+  .hero {
+    padding: 100px 16px 0;
+    min-height: auto;
   }
 
+  .about {
+    padding: 80px 0 60px;
+  }
+
+  .about-panel {
+    padding: 36px 24px;
+    margin-left: 16px;
+    margin-right: 16px;
+    clip-path: none;
+  }
+
+  .about-features-float {
+    padding: 16px;
+  }
+
+  .collection {
+    padding: 80px 0 60px;
+  }
+
+  .collection-split {
+    padding: 0 16px;
+  }
+
+  .roadmap {
+    padding: 80px 0 60px;
+  }
+
+  .stats {
+    padding: 80px 0 60px;
+  }
+
+  .arsenal {
+    padding: 80px 0 60px;
+  }
+
+  .mint {
+    padding: 80px 0 60px;
+  }
+
+  .faq {
+    padding: 80px 0 60px;
+  }
+
+  .footer {
+    padding: 48px 0 24px;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+
+  /* ---- Hero video: hide on mobile to save bandwidth ---- */
+  .hero-video-bg {
+    display: none;
+  }
+
+  /* ---- Navbar ---- */
+  .logo-img {
+    height: 50px;
+  }
+
+  .nav-container {
+    padding: 0 16px;
+  }
+
+  /* ---- NFT grid: keep 2 columns on tablets ---- */
+  .nft-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  /* ---- Smaller NFT card info ---- */
+  .nft-info {
+    padding: 10px 12px 12px;
+  }
+
+  .nft-name {
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+
+  .nft-price {
+    font-size: 10px;
+  }
+
+  .nft-rarity {
+    top: 8px;
+    right: 8px;
+    padding: 3px 8px;
+    font-size: 8px;
+  }
+
+  /* ---- Navigation ---- */
   .nav-links {
     position: fixed;
     inset: 0;
@@ -204,15 +299,50 @@
     display: none;
   }
 
+  /* ---- Stats ---- */
   .stats-bento {
     grid-template-columns: 1fr;
   }
 
+  .stat-card {
+    padding: 24px 18px;
+  }
+
+  .stat-card.stat-featured {
+    padding: 32px 24px;
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 16px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    margin-bottom: 6px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+  }
+
+  .stats-title {
+    margin-bottom: 8px;
+  }
+
+  .stats-subtitle {
+    margin-bottom: 36px;
+  }
+
+  /* ---- Roadmap ---- */
   .timeline-node {
     width: 100%;
     padding-left: 30px !important;
     padding-right: 0 !important;
     text-align: left !important;
+    margin-bottom: 32px;
   }
 
   .node-left .node-dot,
@@ -225,67 +355,636 @@
     left: 0;
   }
 
+  .node-content {
+    padding: 20px;
+  }
+
+  .roadmap-title {
+    margin-bottom: 36px;
+  }
+
+  .roadmap-zigzag {
+    padding: 0 16px;
+  }
+
+  .node-phase {
+    font-size: 9px;
+  }
+
+  .node-content h3 {
+    font-size: 16px;
+    margin: 6px 0 12px;
+  }
+
+  .node-content li {
+    font-size: 12px;
+    padding-left: 14px;
+  }
+
+  .node-status {
+    font-size: 9px;
+  }
+
+  /* ---- Footer ---- */
   .footer-grid {
     grid-template-columns: 1fr;
     gap: 24px;
   }
 
-  .light-beams { display: none; }
-  .embers { display: none; }
-
-  .arsenal-card {
-    flex: 0 0 300px;
-    height: 400px;
+  .footer-brand .logo-img {
+    height: 60px;
   }
 
+  .footer-tagline {
+    font-size: 12px;
+    max-width: 100%;
+  }
+
+  .footer-nav-label {
+    margin-bottom: 12px;
+  }
+
+  .footer-nav a,
+  .footer-social a {
+    font-size: 11px;
+  }
+
+  .footer-bottom {
+    padding-top: 16px;
+  }
+
+  .footer-copy {
+    font-size: 9px;
+  }
+
+  /* ---- Visual effects off ---- */
+  .light-beams { display: none; }
+  .embers { display: none; }
+  .scanlines { display: none; }
+
+  /* ---- Arsenal carousel ---- */
+  .arsenal-card {
+    flex: 0 0 280px;
+    height: 370px;
+  }
+
+  .arsenal-card-info {
+    padding: 16px;
+  }
+
+  .arsenal-card-name {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  /* ---- Cursor ---- */
   html { cursor: auto; }
   .custom-cursor { display: none; }
 
   .back-to-top {
     bottom: 20px;
     right: 20px;
+    width: 36px;
+    height: 36px;
   }
 
   .mute-toggle {
     bottom: 20px;
     left: 20px;
+    width: 32px;
+    height: 32px;
   }
 
   .hud-float { display: none; }
-
   .cursor-trail { display: none; }
+  .cursor-glow { display: none; }
+
+  /* ---- Mint card ---- */
+  .mint-card {
+    padding: 24px 20px;
+  }
+
+  .mint-price-value {
+    font-size: 18px;
+  }
+
+  .mint-qty-display {
+    font-size: 26px;
+  }
+
+  /* ---- Modal ---- */
+  .nft-modal {
+    max-width: 340px;
+  }
+
+  .nft-modal-overlay {
+    padding: 16px;
+  }
+
+  /* ---- Hero ticker ---- */
+  .hero-ticker {
+    gap: 12px;
+    padding: 16px 0;
+  }
+
+  .ticker-value {
+    font-size: 14px;
+  }
+
+  .ticker-label {
+    font-size: 7px;
+  }
+
+  /* ---- Preloader ---- */
+  .preloader-logo .logo-img {
+    height: 160px;
+  }
+
+  /* ---- Buttons ---- */
+  .btn {
+    padding: 10px 22px;
+    font-size: 10px;
+  }
+
+  .btn-lg {
+    padding: 13px 32px;
+    font-size: 11px;
+  }
 }
 
 @media (max-width: 640px) {
+  /* ---- Keep 2-column NFT grid on small phones ---- */
   .nft-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
 
+  /* ---- Smaller card details on phone ---- */
+  .nft-card {
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+
+  .nft-info {
+    padding: 8px 10px 10px;
+  }
+
+  .nft-id-label {
+    font-size: 7px;
+    letter-spacing: 1.5px;
+  }
+
+  .nft-name {
+    font-size: 10px;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+
+  .nft-class {
+    font-size: 8px;
+  }
+
+  .nft-price {
+    font-size: 9px;
+  }
+
+  .nft-rarity {
+    top: 6px;
+    right: 6px;
+    padding: 2px 6px;
+    font-size: 7px;
+    letter-spacing: 1.5px;
+  }
+
+  /* Smaller HUD brackets on tiny cards */
+  .nft-image::before {
+    top: 4px;
+    left: 4px;
+    width: 10px;
+    height: 10px;
+  }
+
+  .nft-image::after {
+    bottom: 4px;
+    right: 4px;
+    width: 10px;
+    height: 10px;
+  }
+
+  /* ---- Further reduce section padding ---- */
+  .hero {
+    padding: 90px 12px 0;
+  }
+
+  .about {
+    padding: 60px 0 48px;
+  }
+
+  .collection {
+    padding: 60px 0 48px;
+  }
+
+  .collection-split {
+    padding: 0 12px;
+  }
+
+  .roadmap {
+    padding: 60px 0 48px;
+  }
+
+  .stats {
+    padding: 60px 0 48px;
+  }
+
+  .arsenal {
+    padding: 60px 0 48px;
+  }
+
+  .mint {
+    padding: 60px 0 48px;
+  }
+
+  .faq {
+    padding: 60px 0 48px;
+  }
+
+  .footer {
+    padding: 36px 0 20px;
+  }
+
+  .container {
+    padding: 0 12px;
+  }
+
+  /* ---- Navbar ---- */
+  .logo-img {
+    height: 42px;
+  }
+
+  .nav-container {
+    padding: 0 12px;
+  }
+
+  /* ---- Hero ---- */
   .hero-buttons {
     flex-direction: column;
     align-items: center;
   }
 
+  .hero-badge {
+    font-size: 8px;
+    padding: 5px 14px;
+    margin-bottom: 24px;
+  }
+
+  .hero-desc {
+    font-size: 14px;
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+
+  .hero-wireframe {
+    width: 200px;
+    height: 240px;
+  }
+
+  .hero-title {
+    margin-bottom: 20px;
+  }
+
+  /* ---- Filter bar ---- */
   .filter-bar {
     flex-wrap: wrap;
   }
 
-  .nft-card {
-    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  .filter-btn {
+    font-size: 9px;
+    padding: 6px 14px;
   }
 
-  .arsenal-card {
-    flex: 0 0 260px;
-    height: 360px;
-  }
-
-  .arsenal-card-name {
+  .collection-sidebar h2 {
     font-size: 18px;
   }
 
-  .hero-wireframe {
-    width: 220px;
-    height: 260px;
+  /* ---- Arsenal ---- */
+  .arsenal-card {
+    flex: 0 0 240px;
+    height: 320px;
+  }
+
+  .arsenal-card-name {
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+
+  .arsenal-card-rank {
+    font-size: 8px;
+  }
+
+  .arsenal-stat-value {
+    font-size: 13px;
+  }
+
+  .arsenal-stat-label {
+    font-size: 7px;
+  }
+
+  .arsenal-card-info {
+    padding: 14px;
+  }
+
+  .arsenal-card-stats {
+    gap: 14px;
+  }
+
+  .arsenal-card-rarity {
+    top: 10px;
+    right: 14px;
+    font-size: 8px;
+    padding: 3px 10px;
+  }
+
+  /* ---- Stats ---- */
+  .stat-card {
+    padding: 20px 16px;
+  }
+
+  .stat-card.stat-featured {
+    padding: 28px 20px;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 14px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+
+  .stat-label {
+    font-size: 8px;
+  }
+
+  .stats-subtitle {
+    margin-bottom: 28px;
+    font-size: 12px;
+  }
+
+  /* ---- Roadmap ---- */
+  .timeline-node {
+    margin-bottom: 24px;
+  }
+
+  .node-content {
+    padding: 18px 16px;
+  }
+
+  .node-content h3 {
+    font-size: 15px;
+    margin: 5px 0 10px;
+  }
+
+  .node-content li {
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .node-content ul {
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .roadmap-title {
+    margin-bottom: 28px;
+  }
+
+  .roadmap-zigzag {
+    padding: 0 12px;
+  }
+
+  /* ---- Footer ---- */
+  .footer-grid {
+    gap: 20px;
+  }
+
+  .footer-brand .logo-img {
+    height: 48px;
+  }
+
+  .footer-tagline {
+    font-size: 11px;
+  }
+
+  .footer-nav a,
+  .footer-social a {
+    font-size: 10px;
+  }
+
+  .footer-nav-label {
+    font-size: 8px;
+    margin-bottom: 10px;
+  }
+
+  .footer-copy {
+    font-size: 8px;
+  }
+
+  .footer-bottom {
+    padding-top: 14px;
+  }
+
+  /* ---- Mint ---- */
+  .mint-container {
+    padding: 0 12px;
+  }
+
+  .mint-card {
+    padding: 20px 16px;
+  }
+
+  .mint-price-value {
+    font-size: 16px;
+  }
+
+  .mint-qty-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 18px;
+  }
+
+  .mint-qty-display {
+    font-size: 24px;
+  }
+
+  .mint-btn {
+    padding: 14px;
+    font-size: 11px;
+    letter-spacing: 3px;
+  }
+
+  .mint-supply-label {
+    font-size: 8px;
+  }
+
+  .mint-price-label {
+    font-size: 9px;
+  }
+
+  /* ---- FAQ ---- */
+  .faq-question {
+    font-size: 13px;
+    padding: 16px 0;
+  }
+
+  .faq-answer p {
+    font-size: 13px;
+    padding-bottom: 16px;
+  }
+
+  .faq-intro {
+    font-size: 13px;
+  }
+
+  /* ---- About ---- */
+  .about-panel {
+    padding: 28px 16px;
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+
+  .about-statement p {
+    font-size: 13px;
+  }
+
+  .feature-item {
+    padding: 14px 12px;
+    gap: 12px;
+  }
+
+  .feature-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .feature-item h3 {
+    font-size: 12px;
+  }
+
+  .feature-item p {
+    font-size: 12px;
+  }
+
+  /* ---- Modal ---- */
+  .nft-modal {
+    max-width: 100%;
+  }
+
+  .nft-modal-overlay {
+    padding: 12px;
+  }
+
+  .nft-modal-name {
+    font-size: 15px;
+  }
+
+  .nft-modal-details {
+    padding: 14px 16px;
+  }
+
+  /* ---- Preloader ---- */
+  .preloader-logo .logo-img {
+    height: 120px;
+  }
+
+  .preloader-logo {
+    margin-bottom: 28px;
+  }
+
+  /* ---- Buttons ---- */
+  .btn {
+    padding: 9px 20px;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+  }
+
+  .btn-lg {
+    padding: 12px 28px;
+    font-size: 11px;
+  }
+}
+
+/* ---- Extra small phones (< 400px) ---- */
+@media (max-width: 400px) {
+  .nft-grid {
+    gap: 6px;
+  }
+
+  .nft-info {
+    padding: 6px 8px 8px;
+  }
+
+  .nft-name {
+    font-size: 9px;
+  }
+
+  .nft-price {
+    font-size: 8px;
+  }
+
+  .nft-rarity {
+    padding: 2px 4px;
+    font-size: 6px;
+  }
+
+  .arsenal-card {
+    flex: 0 0 220px;
+    height: 290px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .stat-icon {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 12px;
+  }
+
+  .node-content {
+    padding: 14px 12px;
+  }
+
+  .node-content h3 {
+    font-size: 14px;
+  }
+
+  .footer-brand .logo-img {
+    height: 40px;
+  }
+
+  .hero-title {
+    margin-bottom: 16px;
+  }
+
+  .hero-desc {
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+
+  .preloader-logo .logo-img {
+    height: 100px;
+  }
+
+  .mint-card {
+    padding: 16px 12px;
+  }
+
+  .mint-wallet-info {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
   }
 }
 

@@ -7,7 +7,8 @@
       "Bash(echo gh not available or not authenticated:*)",
       "Bash(test:*)",
       "Bash(curl:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(find C:\\\\Users\\\\vicen\\\\OneDrive\\\\Desktop\\\\vanguard:*)"
     ]
   }
 }
