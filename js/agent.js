@@ -1284,6 +1284,58 @@
   }
 
   // ═══════════════════════════════════════════
+  // FETCH LIVE PREDICTION FROM BOT (single source of truth)
+  // ═══════════════════════════════════════════
+
+  let lastPredFetch = 0;
+
+  async function fetchLivePrediction() {
+    // Only fetch every 5 seconds to avoid spamming
+    var now = Date.now();
+    if (now - lastPredFetch < 5000) return;
+    lastPredFetch = now;
+
+    try {
+      var url = SUPABASE_URL + '/rest/v1/live_prediction?id=eq.1&select=*';
+      var res = await fetch(url, { headers: SB_HEADERS });
+      if (!res.ok) return;
+      var data = await res.json();
+      if (!data || data.length === 0) return;
+
+      var pred = data[0];
+      if (pred.direction === 'pending' || !pred.direction) {
+        // Bot hasn't made prediction yet
+        if (els.finalPred) els.finalPred.style.display = 'none';
+        return;
+      }
+
+      // Bot has a prediction — display it
+      var isOver = pred.direction === 'over';
+      finalPredLocked = true;
+      finalPredDirection = pred.direction;
+      finalPredPTB = pred.ptb;
+
+      if (els.finalPred) {
+        els.finalPred.style.display = 'block';
+        els.finalPred.className = 'agent-final-pred pred-' + (isOver ? 'over' : 'under');
+      }
+      if (els.finalIcon) els.finalIcon.textContent = isOver ? '🟢' : '🔴';
+      if (els.finalCall) els.finalCall.textContent = isOver ? 'OVER' : 'UNDER';
+      if (els.finalConf) {
+        els.finalConf.textContent = (pred.confidence || 'MED') + ' ' + (pred.conf_pct ? pred.conf_pct.toFixed(0) + '%' : '--');
+        var confLevel = pred.confidence === 'HIGH' ? 'high' : pred.confidence === 'LOW' ? 'low' : 'medium';
+        els.finalConf.className = 'agent-final-conf ' + confLevel;
+      }
+      if (els.finalStatus) els.finalStatus.textContent = 'LOCKED IN';
+      if (els.finalPrice) els.finalPrice.textContent = pred.btc_price ? formatPrice(pred.btc_price) : '--';
+      if (els.finalSignals) els.finalSignals.textContent = pred.signals || ('Bull: ' + (pred.bull_score || 0).toFixed(1) + ' · Bear: ' + (pred.bear_score || 0).toFixed(1));
+
+    } catch (e) {
+      // Silently fail — will retry in 5s
+    }
+  }
+
+  // ═══════════════════════════════════════════
   // COUNTDOWN TIMER
   // ═══════════════════════════════════════════
 
@@ -1313,11 +1365,9 @@
       setTimeout(refresh, 500);
     }
 
-    // Trigger final prediction at 2:00 remaining
-    if (!finalPredLocked && left <= 120 && left > 0) {
-      finalPredLocked = true;
-      finalPredWindow = windowStart;
-      analyzeFinalPrediction();
+    // Fetch live prediction from bot (single source of truth)
+    if (!finalPredLocked) {
+      fetchLivePrediction();
     }
   }
 
