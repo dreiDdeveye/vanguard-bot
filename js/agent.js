@@ -176,14 +176,44 @@
     const aligned = ema9[last] > ema21[last] && ema21[last] > ema50[last] ? 'BULLISH' :
                     ema9[last] < ema21[last] && ema21[last] < ema50[last] ? 'BEARISH' : 'MIXED';
 
+    // Momentum direction: is RSI rising or falling?
+    const rsiPrev = rsi14[last - 1];
+    const rsiDelta = (rsi14[last] != null && rsiPrev != null) ? rsi14[last] - rsiPrev : 0;
+
+    // MACD histogram trend (expanding or contracting?)
+    const macdHistPrev = macdData.histogram[last - 1];
+    const macdHistDelta = macdData.histogram[last] - macdHistPrev;
+
+    // Price returns over recent candles
+    const ret1 = ((closes[last] - closes[last - 1]) / closes[last - 1]) * 100;
+    const ret3 = last >= 3 ? ((closes[last] - closes[last - 3]) / closes[last - 3]) * 100 : 0;
+
+    // Recent candle bodies: how many of last 3 are bullish vs bearish
+    let recentBullCandles = 0;
+    let recentBearCandles = 0;
+    for (let i = last; i >= Math.max(0, last - 2); i--) {
+      if (candles[i].close > candles[i].open) recentBullCandles++;
+      else recentBearCandles++;
+    }
+
+    // EMA slopes (rate of change)
+    const ema9Slope = last >= 3 ? ((ema9[last] - ema9[last - 3]) / ema9[last - 3]) * 100 : 0;
+
     return {
       price: closes[last],
       rsi: rsi14[last],
+      rsiDelta: rsiDelta,
       macdHist: macdData.histogram[last],
+      macdHistDelta: macdHistDelta,
       macdCrossing: Math.sign(macdData.histogram[last]) !== Math.sign(macdData.histogram[last - 1]),
       emaAligned: aligned,
+      ema9Slope: ema9Slope,
       vwapDist: ((closes[last] - vwapData[last]) / vwapData[last] * 100),
       volZScore: volZ[last],
+      ret1: ret1,
+      ret3: ret3,
+      recentBullCandles: recentBullCandles,
+      recentBearCandles: recentBearCandles,
     };
   }
 
@@ -1042,102 +1072,187 @@
     const signals = [];
     let bullScore = 0;
     let bearScore = 0;
+    const ta = state.ta;
 
-    // 1. Price momentum vs PTB
-    if (state.btcPrice && state.priceToBeat) {
+    // ═══ 1. MARKET ODDS — PRIMARY SIGNAL (Polymarket = smart money) ═══
+    // Ranked highest: the market is usually right
+    if (state.upPct && state.downPct) {
+      const up = parseFloat(state.upPct);
+      const down = parseFloat(state.downPct);
+      if (up > 65) {
+        bullScore += 3;
+        signals.push('MARKET STRONG OVER ' + up + '%');
+      } else if (down > 65) {
+        bearScore += 3;
+        signals.push('MARKET STRONG UNDER ' + down + '%');
+      } else if (up > 55) {
+        bullScore += 1.5;
+        signals.push('MARKET LEAN OVER ' + up + '%');
+      } else if (down > 55) {
+        bearScore += 1.5;
+        signals.push('MARKET LEAN UNDER ' + down + '%');
+      } else {
+        signals.push('MARKET SPLIT ' + up + '/' + down);
+      }
+    }
+
+    // ═══ 2. MEAN-REVERSION — Key insight for 5m predictions ═══
+    // Price above PTB with fading momentum → likely UNDER
+    // Price below PTB with selling exhausted → likely OVER
+    if (state.btcPrice && state.priceToBeat && ta) {
       const diff = state.btcPrice - state.priceToBeat;
       const pctDiff = (diff / state.priceToBeat) * 100;
-      if (diff > 0) {
-        bullScore += Math.min(pctDiff * 10, 3);
-        signals.push('PRICE +' + pctDiff.toFixed(3) + '% above PTB');
+      const abovePTB = diff > 0;
+
+      if (abovePTB) {
+        // Above PTB — check if momentum is fading
+        const momentumFading = (ta.rsiDelta < 0) || (ta.macdHistDelta < 0) || (ta.ema9Slope < 0);
+        const recentBearish = ta.recentBearCandles >= 2;
+
+        if (momentumFading || recentBearish) {
+          // Price pumped but losing steam → UNDER
+          bearScore += 2;
+          signals.push('ABOVE PTB +' + pctDiff.toFixed(3) + '% FADING');
+        } else {
+          // Strong continued momentum above PTB
+          bullScore += Math.min(pctDiff * 5, 2);
+          signals.push('ABOVE PTB +' + pctDiff.toFixed(3) + '% STRONG');
+        }
       } else {
-        bearScore += Math.min(Math.abs(pctDiff) * 10, 3);
-        signals.push('PRICE ' + pctDiff.toFixed(3) + '% below PTB');
+        // Below PTB — check if selling is exhausted
+        const sellingExhausted = (ta.rsiDelta > 0) || (ta.macdHistDelta > 0) || (ta.ema9Slope > 0);
+        const recentBullish = ta.recentBullCandles >= 2;
+
+        if (sellingExhausted || recentBullish) {
+          // Price dipped but recovering → OVER
+          bullScore += 2;
+          signals.push('BELOW PTB ' + pctDiff.toFixed(3) + '% RECOVERING');
+        } else {
+          // Continued selling pressure
+          bearScore += Math.min(Math.abs(pctDiff) * 5, 2);
+          signals.push('BELOW PTB ' + pctDiff.toFixed(3) + '% WEAK');
+        }
       }
     }
 
-    // 2. RSI
-    if (state.ta && state.ta.rsi != null) {
-      if (state.ta.rsi > 65) {
-        bearScore += 1.5;
-        signals.push('RSI ' + state.ta.rsi.toFixed(1) + ' OB');
-      } else if (state.ta.rsi < 35) {
+    // ═══ 3. VWAP POSITION — Most reliable 5m indicator ═══
+    if (ta && ta.vwapDist != null) {
+      if (ta.vwapDist > 0.05) {
         bullScore += 1.5;
-        signals.push('RSI ' + state.ta.rsi.toFixed(1) + ' OS');
-      } else if (state.ta.rsi > 50) {
-        bullScore += 0.5;
-        signals.push('RSI ' + state.ta.rsi.toFixed(1) + ' bull');
-      } else {
-        bearScore += 0.5;
-        signals.push('RSI ' + state.ta.rsi.toFixed(1) + ' bear');
+        signals.push('VWAP +' + ta.vwapDist.toFixed(3) + '%');
+      } else if (ta.vwapDist < -0.05) {
+        bearScore += 1.5;
+        signals.push('VWAP ' + ta.vwapDist.toFixed(3) + '%');
       }
     }
 
-    // 3. MACD
-    if (state.ta && state.ta.macdHist != null) {
-      if (state.ta.macdHist > 0) {
+    // ═══ 4. EMA ALIGNMENT — Trend confirmation ═══
+    if (ta && ta.emaAligned) {
+      if (ta.emaAligned === 'BULLISH') {
         bullScore += 1;
-        signals.push('MACD +' + state.ta.macdHist.toFixed(1));
-      } else {
-        bearScore += 1;
-        signals.push('MACD ' + state.ta.macdHist.toFixed(1));
-      }
-      if (state.ta.macdCrossing) {
-        bullScore += state.ta.macdHist > 0 ? 1 : 0;
-        bearScore += state.ta.macdHist > 0 ? 0 : 1;
-        signals.push('MACD X');
-      }
-    }
-
-    // 4. EMA alignment
-    if (state.ta && state.ta.emaAligned) {
-      if (state.ta.emaAligned === 'BULLISH') {
-        bullScore += 1.5;
         signals.push('EMA BULL');
-      } else if (state.ta.emaAligned === 'BEARISH') {
-        bearScore += 1.5;
+      } else if (ta.emaAligned === 'BEARISH') {
+        bearScore += 1;
         signals.push('EMA BEAR');
       } else {
         signals.push('EMA MIX');
       }
     }
 
-    // 5. VWAP
-    if (state.ta && state.ta.vwapDist != null) {
-      if (state.ta.vwapDist > 0.05) {
-        bullScore += 0.5;
-        signals.push('VWAP +' + state.ta.vwapDist.toFixed(3) + '%');
-      } else if (state.ta.vwapDist < -0.05) {
-        bearScore += 0.5;
-        signals.push('VWAP ' + state.ta.vwapDist.toFixed(3) + '%');
+    // ═══ 5. RSI — Extremes matter most, direction matters ═══
+    if (ta && ta.rsi != null) {
+      if (ta.rsi > 70) {
+        // Overbought — mean-revert down
+        bearScore += 2;
+        signals.push('RSI ' + ta.rsi.toFixed(1) + ' OB');
+      } else if (ta.rsi < 30) {
+        // Oversold — mean-revert up
+        bullScore += 2;
+        signals.push('RSI ' + ta.rsi.toFixed(1) + ' OS');
+      } else {
+        // Mid-range: RSI direction matters more than value
+        if (ta.rsiDelta > 2) {
+          bullScore += 0.5;
+          signals.push('RSI RISING');
+        } else if (ta.rsiDelta < -2) {
+          bearScore += 0.5;
+          signals.push('RSI FALLING');
+        }
       }
     }
 
-    // 6. Volume
-    if (state.ta && state.ta.volZScore != null) {
-      if (state.ta.volZScore > 1.5) {
-        signals.push('VOL z=' + state.ta.volZScore.toFixed(2));
-        if (state.btcPrice > state.priceToBeat) bullScore += 1;
+    // ═══ 6. MACD — Crossings and histogram direction ═══
+    if (ta && ta.macdHist != null) {
+      if (ta.macdCrossing) {
+        // Fresh cross = strong signal
+        if (ta.macdHist > 0) { bullScore += 1.5; signals.push('MACD BULL X'); }
+        else { bearScore += 1.5; signals.push('MACD BEAR X'); }
+      } else {
+        // Histogram expanding vs contracting
+        if (ta.macdHist > 0 && ta.macdHistDelta > 0) {
+          bullScore += 0.5;
+          signals.push('MACD EXPANDING');
+        } else if (ta.macdHist < 0 && ta.macdHistDelta < 0) {
+          bearScore += 0.5;
+          signals.push('MACD EXPANDING BEAR');
+        } else if (ta.macdHist > 0 && ta.macdHistDelta < 0) {
+          bearScore += 0.5;
+          signals.push('MACD FADING');
+        } else if (ta.macdHist < 0 && ta.macdHistDelta > 0) {
+          bullScore += 0.5;
+          signals.push('MACD RECOVERING');
+        }
+      }
+    }
+
+    // ═══ 7. VOLUME — Confirms or fades moves ═══
+    if (ta && ta.volZScore != null) {
+      if (ta.volZScore > 2) {
+        // High volume confirms the current direction
+        if (ta.ret1 > 0) bullScore += 1;
         else bearScore += 1;
+        signals.push('VOL SPIKE z=' + ta.volZScore.toFixed(2));
+      } else if (ta.volZScore < -1) {
+        // Low volume = low conviction, fade the move
+        if (state.btcPrice > state.priceToBeat) bearScore += 0.5;
+        else bullScore += 0.5;
+        signals.push('VOL DRY — FADE');
       }
     }
 
-    // 7. Market odds
-    if (state.upPct && state.downPct) {
-      const up = parseFloat(state.upPct);
-      const down = parseFloat(state.downPct);
-      if (up > 55) {
-        bullScore += 1;
-        signals.push('ODDS OVER ' + up + '%');
-      } else if (down > 55) {
-        bearScore += 1;
-        signals.push('ODDS UNDER ' + down + '%');
+    // ═══ 8. RECENT CANDLE PATTERN ═══
+    if (ta) {
+      if (ta.recentBullCandles === 3) {
+        bullScore += 0.5;
+        signals.push('3 BULL CANDLES');
+      } else if (ta.recentBearCandles === 3) {
+        bearScore += 0.5;
+        signals.push('3 BEAR CANDLES');
       }
     }
 
-    // Final decision
+    // ═══ 9. MOMENTUM DIRECTION (short-term returns) ═══
+    if (ta && ta.ret3 != null) {
+      if (ta.ret3 > 0.1) {
+        bullScore += 0.5;
+      } else if (ta.ret3 < -0.1) {
+        bearScore += 0.5;
+      }
+    }
+
+    // ═══ FINAL DECISION ═══
+    // Ties go to market odds direction, not defaulting to OVER
     const totalScore = bullScore + bearScore;
-    const isOver = bullScore >= bearScore;
+    let isOver;
+    if (bullScore === bearScore) {
+      // Tiebreaker: use market odds
+      const up = parseFloat(state.upPct || 50);
+      const down = parseFloat(state.downPct || 50);
+      isOver = up >= down;
+      signals.push('TIE — MARKET DECIDES');
+    } else {
+      isOver = bullScore > bearScore;
+    }
     const margin = Math.abs(bullScore - bearScore);
     const confPct = totalScore > 0 ? (Math.max(bullScore, bearScore) / totalScore * 100) : 50;
 
