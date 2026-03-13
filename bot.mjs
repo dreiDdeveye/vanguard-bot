@@ -51,6 +51,7 @@ createServer((req, res) => {
 let chainlinkSnapshotPrice = null;
 let chainlinkSnapshotWindow = 0;
 let priceBuffer = [];
+let lastChartSave = 0;
 
 // ═══════════════════════════════════════════
 // TA INDICATORS
@@ -429,6 +430,17 @@ function connectRTDS() {
           // Store in buffer
           priceBuffer.push({ timestamp: msg.payload.timestamp || Date.now(), value: msg.payload.value });
           if (priceBuffer.length > 600) priceBuffer.shift();
+
+          // Save chart point to Supabase every 10 seconds
+          const nowMs = Date.now();
+          if (nowMs - lastChartSave >= 10000) {
+            lastChartSave = nowMs;
+            fetch(SUPABASE_URL + '/rest/v1/chart_prices', {
+              method: 'POST',
+              headers: SB_HEADERS,
+              body: JSON.stringify({ ts: nowMs, price: msg.payload.value }),
+            }).catch(() => {});
+          }
 
           // Snapshot at window boundary for PTB
           const now = Math.floor(Date.now() / 1000);
