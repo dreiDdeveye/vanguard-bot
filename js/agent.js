@@ -1376,6 +1376,18 @@
   // ═══════════════════════════════════════════
 
   let refreshing = false;
+  let lastHistoryCount = 0;
+
+  async function refreshHistory() {
+    try {
+      var history = await fetchHistory();
+      if (!history || history.length === lastHistoryCount) return; // no change
+      lastHistoryCount = history.length;
+      updateHistoryUI(history);
+      var record = computeTrackRecord(history);
+      updateStatsUI(record);
+    } catch (e) {}
+  }
 
   async function refresh() {
     if (refreshing) return;
@@ -1491,8 +1503,11 @@
     connectRTDS();
     refresh();
 
-    // Refresh data every 30 seconds
+    // Full refresh every 30 seconds (candles + TA + Polymarket)
     setInterval(refresh, 30000);
+
+    // History + track record poll every 5 seconds (near real-time)
+    setInterval(refreshHistory, 5000);
 
     // Countdown every second
     setInterval(updateCountdown, 1000);
