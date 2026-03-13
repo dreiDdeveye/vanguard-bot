@@ -443,6 +443,29 @@ function makePrediction() {
   state.predictionMade = true;
 
   console.log(`[BOT] PREDICTION: ${isOver ? 'OVER' : 'UNDER'} | Conf: ${confLabel} ${confPct.toFixed(0)}% | Bull: ${bullScore.toFixed(1)} Bear: ${bearScore.toFixed(1)}`);
+
+  // Save to Supabase so all browsers show the same prediction
+  saveLivePrediction(isOver ? 'over' : 'under', confLabel, confPct, bullScore, bearScore);
+}
+
+function saveLivePrediction(direction, confLabel, confPct, bullScore, bearScore) {
+  const row = {
+    id: 1,
+    window_start: state.currentWindowStart,
+    direction: direction,
+    confidence: confLabel,
+    conf_pct: confPct,
+    ptb: state.priceToBeat,
+    btc_price: state.btcPrice,
+    bull_score: bullScore,
+    bear_score: bearScore,
+    updated_at: new Date().toISOString(),
+  };
+  fetch(SUPABASE_URL + '/rest/v1/live_prediction?id=eq.1', {
+    method: 'PATCH',
+    headers: SB_HEADERS,
+    body: JSON.stringify(row),
+  }).catch(() => {});
 }
 
 // ═══════════════════════════════════════════
@@ -554,6 +577,13 @@ async function tick() {
     state.predictionMade = false;
     state.predictionDirection = null;
     state.predictionPTB = null;
+
+    // Reset live prediction to pending
+    fetch(SUPABASE_URL + '/rest/v1/live_prediction?id=eq.1', {
+      method: 'PATCH',
+      headers: SB_HEADERS,
+      body: JSON.stringify({ direction: 'pending', window_start: windowStart, updated_at: new Date().toISOString() }),
+    }).catch(() => {});
     console.log(`\n[BOT] ═══ NEW WINDOW: ${new Date(windowStart * 1000).toLocaleTimeString()} ═══`);
   }
 
