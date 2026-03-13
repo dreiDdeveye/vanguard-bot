@@ -5,7 +5,9 @@
       "WebFetch(domain:unsplash.com)",
       "Bash(cd:*)",
       "Bash(echo gh not available or not authenticated:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(curl:*)",
+      "Bash(python:*)"
     ]
   }
 }

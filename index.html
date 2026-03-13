@@ -10,7 +10,9 @@
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://vanguardnft.io/og-image.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23050807'/%3E%3Cpath d='M16 4 L28 28 H4Z' fill='none' stroke='%234cc98a' stroke-width='2'/%3E%3Cpath d='M16 10 L22 24 H10Z' fill='%234cc98a' fill-opacity='0.3'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/png" sizes="32x32" href="public/title.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="public/title.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="public/title.png" />
   <!-- Component CSS -->
   <link rel="stylesheet" href="css/base.css" />
   <link rel="stylesheet" href="css/animations.css" />
@@ -22,6 +24,7 @@
   <link rel="stylesheet" href="css/roadmap.css" />
   <link rel="stylesheet" href="css/stats.css" />
   <link rel="stylesheet" href="css/arsenal.css" />
+  <link rel="stylesheet" href="css/mint.css" />
   <link rel="stylesheet" href="css/faq.css" />
   <link rel="stylesheet" href="css/footer.css" />
   <link rel="stylesheet" href="css/modal.css" />
@@ -37,7 +40,7 @@
   <!-- Preloader -->
   <div class="preloader" id="preloader">
     <div class="preloader-inner">
-      <div class="preloader-logo">VANGUARD</div>
+      <div class="preloader-logo"><img src="public/title.png" alt="VANGUARD" class="logo-img" /></div>
       <div class="preloader-bar-track">
         <div class="preloader-bar-fill" id="preloaderBar"></div>
       </div>
@@ -115,15 +118,15 @@
   <!-- Navigation -->
   <nav class="navbar" id="navbar">
     <div class="nav-container">
-      <a href="#" class="logo">VANGUARD</a>
+      <a href="#" class="logo"><img src="public/title.png" alt="VANGUARD" class="logo-img" /></a>
       <ul class="nav-links" id="navLinks">
         <li><a href="#home">Home</a></li>
         <li><a href="#about">About</a></li>
+        <li><a href="#arsenal">Arsenal</a></li>
         <li><a href="#collection">Collection</a></li>
-
+        <li><a href="#mint">Mint</a></li>
         <li><a href="#roadmap">Roadmap</a></li>
         <li><a href="#stats">Stats</a></li>
-        <li><a href="#arsenal">Arsenal</a></li>
         <li><a href="#faq">FAQ</a></li>
       </ul>
       <div class="nav-actions">
@@ -136,6 +139,9 @@
 
   <!-- Hero Section -->
   <section class="hero" id="home">
+    <video class="hero-video-bg" autoplay muted loop playsinline aria-hidden="true">
+      <source src="public/heroanimation.mp4" type="video/mp4" />
+    </video>
     <canvas class="hero-particles" id="heroParticles" aria-hidden="true"></canvas>
     <div class="hero-mesh" aria-hidden="true"></div>
     <div class="hero-inner">
@@ -233,6 +239,21 @@
     </div>
   </section>
 
+  <!-- Arsenal / Showcase Reel — auto carousel -->
+  <section class="arsenal" id="arsenal">
+    <div class="container">
+      <div class="arsenal-header">
+        <h2 class="arsenal-title reveal-mask">The Arsenal</h2>
+        <p class="arsenal-subtitle">The rarest units in the collection.</p>
+      </div>
+    </div>
+    <div class="arsenal-track-wrapper">
+      <div class="arsenal-track" id="arsenalTrack">
+        <!-- Cards generated & duplicated via JS for infinite loop -->
+      </div>
+    </div>
+  </section>
+
   <!-- Collection Section — split control panel -->
   <section class="collection" id="collection">
     <div class="collection-split">
@@ -253,6 +274,51 @@
       </div>
       <div class="collection-main">
         <div class="nft-grid" id="nftGrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mint Section -->
+  <section class="mint" id="mint">
+    <div class="mint-container">
+      <div class="mint-header">
+        <h2 class="mint-title reveal-mask">Mint Now</h2>
+        <p class="mint-subtitle">Connect your wallet and claim your Vanguard.</p>
+      </div>
+      <div class="mint-card reveal">
+        <div class="mint-supply">
+          <div class="mint-supply-header">
+            <span class="mint-supply-label">Minted</span>
+            <span class="mint-supply-count" id="mintSupplyCount"><span>0</span> / 10,000</span>
+          </div>
+          <div class="mint-progress-track">
+            <div class="mint-progress-fill" id="mintProgressFill"></div>
+          </div>
+        </div>
+        <div class="mint-price-row">
+          <span class="mint-price-label">Price per NFT</span>
+          <span class="mint-price-value">0.08 ETH</span>
+        </div>
+        <div class="mint-quantity">
+          <button class="mint-qty-btn" id="mintQtyMinus">−</button>
+          <span class="mint-qty-display" id="mintQtyDisplay">1</span>
+          <button class="mint-qty-btn" id="mintQtyPlus">+</button>
+        </div>
+        <div class="mint-total">
+          <span class="mint-total-label">Total</span>
+          <span class="mint-total-value" id="mintTotalValue">0.08 ETH</span>
+        </div>
+        <!-- Wallet info (shown when connected) -->
+        <div class="mint-wallet-info" id="mintWalletInfo" style="display: none;">
+          <span class="mint-wallet-address" id="mintWalletAddr"></span>
+          <button class="mint-wallet-disconnect" id="mintDisconnect">Disconnect</button>
+        </div>
+        <!-- Connect button (shown when not connected) -->
+        <button class="mint-btn connect" id="mintConnectBtn">Connect Wallet</button>
+        <!-- Mint button (shown after connect) -->
+        <button class="mint-btn do-mint" id="mintActionBtn" style="display: none;">Mint</button>
+        <div class="mint-status" id="mintStatus"></div>
+        <div class="mint-network">Sepolia Testnet</div>
       </div>
     </div>
   </section>
@@ -365,21 +431,6 @@
     </div>
   </section>
 
-  <!-- Arsenal / Showcase Reel -->
-  <section class="arsenal" id="arsenal">
-    <div class="container">
-      <div class="arsenal-header">
-        <h2 class="arsenal-title reveal-mask">The Arsenal</h2>
-        <p class="arsenal-subtitle">The rarest units in the collection.</p>
-      </div>
-    </div>
-    <div class="arsenal-track-wrapper">
-      <div class="arsenal-track" id="arsenalTrack">
-        <!-- Cards generated via JS -->
-      </div>
-    </div>
-  </section>
-
   <!-- FAQ Section — sticky split -->
   <section class="faq" id="faq">
     <div class="container">
@@ -444,7 +495,7 @@
     <div class="container">
       <div class="footer-grid">
         <div class="footer-brand">
-          <a href="#" class="logo">VANGUARD</a>
+          <a href="#" class="logo"><img src="public/title.png" alt="VANGUARD" class="logo-img" /></a>
           <p class="footer-tagline">The future of digital collectibles.</p>
         </div>
         <div class="footer-nav">
@@ -496,6 +547,8 @@
     <svg class="mute-icon-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
   </button>
 
+  <!-- Ethers.js for wallet interaction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.9.0/ethers.umd.min.js"></script>
   <!-- Component JS (load order matters) -->
   <script src="js/effects.js"></script>
   <script src="js/hero-canvas.js"></script>
@@ -511,6 +564,7 @@
   <script src="js/stats.js"></script>
   <script src="js/arsenal.js"></script>
   <script src="js/scroll.js"></script>
+  <script src="js/mint.js"></script>
   <script src="js/transition.js"></script>
 </body>
 </html>

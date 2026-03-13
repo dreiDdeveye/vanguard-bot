@@ -33,34 +33,29 @@
   letter-spacing: 1px;
 }
 
-/* Horizontal scroll track */
+/* Infinite carousel track */
 .arsenal-track-wrapper {
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0 24px 24px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--gold-border) transparent;
+  overflow: hidden;
+  padding: 0 0 24px;
   position: relative;
   z-index: 1;
-}
-
-.arsenal-track-wrapper::-webkit-scrollbar {
-  height: 3px;
-}
-
-.arsenal-track-wrapper::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.arsenal-track-wrapper::-webkit-scrollbar-thumb {
-  background: var(--gold-border);
 }
 
 .arsenal-track {
   display: flex;
   gap: 24px;
-  min-width: max-content;
+  width: max-content;
   padding: 20px 0;
+  animation: arsenalScroll 40s linear infinite;
+}
+
+.arsenal-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes arsenalScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 /* Arsenal showcase card */

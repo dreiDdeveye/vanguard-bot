@@ -29,10 +29,10 @@
     const rarityClass = card.querySelector('.nft-rarity').className;
     const category = card.querySelector('.nft-class').textContent;
     const price = card.querySelector('.nft-price').textContent;
-    const image = card.querySelector('.nft-image');
-    const bg = image.style.background;
-
-    modalImage.style.background = bg;
+    const imgEl = card.querySelector('.nft-img');
+    if (imgEl) {
+      modalImage.style.background = `url('${imgEl.src}') center/cover no-repeat`;
+    }
     modalName.textContent = name;
     modalRarity.textContent = rarity;
     modalRarity.className = 'nft-modal-rarity ' + rarityClass.replace('nft-rarity ', '');

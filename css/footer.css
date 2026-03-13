@@ -15,8 +15,13 @@
 }
 
 .footer-brand .logo {
-  display: inline-block;
+  display: inline-flex;
   margin-bottom: 12px;
+}
+
+.footer-brand .logo-img {
+  height: 80px;
+  width: auto;
 }
 
 .footer-tagline {

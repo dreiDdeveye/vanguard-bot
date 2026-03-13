@@ -1,0 +1,2 @@
+  await vanguard.setMintActive(true);
+const vanguard = await ethers.getContractAt("Vanguard", "0xe51668B865Cd75A4Bc01382f38aFf20a7D5805EC");

@@ -89,14 +89,3 @@ document.querySelectorAll('[data-target]').forEach(el => {
   });
 })();
 
-// ===== ANIMATED GRADIENT BORDERS ON STAT CARDS =====
-(function () {
-  document.querySelectorAll('.stat-card').forEach(card => {
-    const borderLine = document.createElement('div');
-    borderLine.className = 'glow-border-line';
-    const inner = document.createElement('div');
-    inner.className = 'glow-border-inner';
-    borderLine.appendChild(inner);
-    card.insertBefore(borderLine, card.firstChild);
-  });
-})();

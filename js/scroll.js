@@ -11,6 +11,24 @@
   const heroSection = document.querySelector('.hero');
   const backToTopBtn = document.getElementById('backToTop');
   const allSections = document.querySelectorAll('.about, .collection, .roadmap, .stats, .arsenal, .faq');
+  const navLogo = navbar.querySelector('.logo');
+  const navContainer = navbar.querySelector('.nav-container');
+  let logoCenterOffset = 0;
+
+  function calcLogoCenterOffset() {
+    if (!navLogo || !navContainer) return;
+    // Reset transform to measure original position
+    navLogo.style.transition = 'none';
+    navLogo.style.transform = 'translateX(0)';
+    const logoRect = navLogo.getBoundingClientRect();
+    const navRect = navContainer.getBoundingClientRect();
+    logoCenterOffset = (navRect.left + navRect.width / 2) - (logoRect.left + logoRect.width / 2);
+    navLogo.offsetHeight; // force reflow
+    navLogo.style.transition = '';
+  }
+
+  calcLogoCenterOffset();
+  window.addEventListener('resize', calcLogoCenterOffset);
 
   // Cache nav link map
   const navLinkMap = {};
@@ -41,7 +59,13 @@
       const docHeight = document.documentElement.scrollHeight - vh;
 
       // 1. Navbar
-      navbar.classList.toggle('scrolled', scrollY > 50);
+      const isScrolled = scrollY > 50;
+      navbar.classList.toggle('scrolled', isScrolled);
+
+      // Center the logo when scrolled
+      if (navLogo) {
+        navLogo.style.transform = isScrolled ? `translateX(${logoCenterOffset}px)` : 'translateX(0)';
+      }
 
       // 2. Scroll progress bar
       if (scrollProgressBar) {
