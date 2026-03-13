@@ -1,10 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
-// VANGUARD PREDICTION BOT — Background worker (runs 24/7)
+// VANGUARD PREDICTION BOT — Runs 24/7 as a free Render Web Service
 // Mirrors agent.js prediction logic, saves to Supabase
-// Deploy on Render as a Background Worker
 // ═══════════════════════════════════════════════════════════════
 
 import WebSocket from 'ws';
+import { createServer } from 'http';
 
 // ── Config ──
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://hejzmirkxgecykdgcobe.supabase.co';
@@ -31,6 +31,21 @@ const state = {
   predictionDirection: null,
   predictionPTB: null,
 };
+
+// ── Keep-alive HTTP server (Render free Web Service needs a port) ──
+const PORT = process.env.PORT || 3000;
+createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    status: 'running',
+    uptime: Math.floor(process.uptime()),
+    wins: state.wins,
+    losses: state.losses,
+    btcPrice: state.btcPrice,
+    priceToBeat: state.priceToBeat,
+    prediction: state.predictionDirection,
+  }));
+}).listen(PORT, () => console.log(`[BOT] Health server on port ${PORT}`));
 
 // Chainlink snapshots
 let chainlinkSnapshotPrice = null;

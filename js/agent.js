@@ -73,7 +73,17 @@
     finalStatus: $('agentFinalStatus'),
     finalPrice: $('agentFinalPrice'),
     finalSignals: $('agentFinalSignals'),
+    chart: $('agentChart'),
+    chartTooltip: $('agentChartTooltip'),
+    chartHigh: $('agentChartHigh'),
+    chartLow: $('agentChartLow'),
+    chartChange: $('agentChartChange'),
   };
+
+  // ── Chart state — continuous rolling buffer, persisted to Supabase ──
+  let chartPoints = []; // [{time, price}]
+  const CHART_DURATION = 30 * 60 * 1000; // show last 30 minutes
+  let lastChartSave = 0; // throttle saves to every 10 seconds
 
   let finalPredLocked = false;
   let finalPredWindow = 0;
@@ -312,12 +322,21 @@
         return [];
       }
       const data = await res.json();
-      if (data && data.length > 0) {
-        console.log('[AGENT] Loaded ' + data.length + ' predictions from Supabase');
-      } else {
+      if (!data || data.length === 0) {
         console.warn('[AGENT] No predictions in Supabase');
+        return [];
       }
-      return data || [];
+      // Deduplicate by timestamp — keep first (most recent) per ts
+      const seen = {};
+      const deduped = [];
+      for (const p of data) {
+        if (!seen[p.ts]) {
+          seen[p.ts] = true;
+          deduped.push(p);
+        }
+      }
+      console.log('[AGENT] Loaded ' + deduped.length + ' predictions (' + data.length + ' total, deduped)');
+      return deduped;
     } catch (e) {
       console.error('[AGENT] History error:', e.message);
       return [];
@@ -492,6 +511,7 @@
               console.log('[AGENT] Chainlink PTB snapshot at boundary:', chainlinkSnapshotPrice);
             }
             updatePriceUI();
+            addChartPoint(msg.payload.value);
           }
         } catch (e) { /* ignore parse errors */ }
       };
@@ -772,6 +792,246 @@
   }
 
   // ═══════════════════════════════════════════
+  // BTC PRICE CHART (canvas)
+  // ═══════════════════════════════════════════
+
+  function addChartPoint(price) {
+    if (!price) return;
+    var now = Date.now();
+    chartPoints.push({ time: now, price: price });
+
+    // Trim old points beyond 30 minutes
+    var cutoff = now - CHART_DURATION;
+    while (chartPoints.length > 0 && chartPoints[0].time < cutoff) {
+      chartPoints.shift();
+    }
+
+    // Save to Supabase every 10 seconds
+    if (now - lastChartSave >= 10000) {
+      lastChartSave = now;
+      saveChartPoint(now, price);
+    }
+
+    renderChart();
+  }
+
+  function saveChartPoint(ts, price) {
+    var url = SUPABASE_URL + '/rest/v1/chart_prices';
+    fetch(url, {
+      method: 'POST',
+      headers: SB_HEADERS,
+      body: JSON.stringify({ ts: ts, price: price }),
+    }).catch(function() {});
+  }
+
+  async function loadChartHistory() {
+    try {
+      var cutoff = Date.now() - CHART_DURATION;
+      var url = SUPABASE_URL + '/rest/v1/chart_prices?select=ts,price&ts=gte.' + cutoff + '&order=ts.asc&limit=500';
+      var res = await fetch(url, { headers: SB_HEADERS });
+      if (!res.ok) return;
+      var data = await res.json();
+      if (data && data.length > 0) {
+        chartPoints = data.map(function(d) { return { time: d.ts, price: d.price }; });
+        console.log('[AGENT] Loaded ' + data.length + ' chart points from Supabase');
+        renderChart();
+      }
+    } catch (e) {
+      console.error('[AGENT] Chart history error:', e.message);
+    }
+  }
+
+  function renderChart() {
+    if (!els.chart || chartPoints.length < 2) return;
+
+    var canvas = els.chart;
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    var rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    var W = rect.width;
+    var H = rect.height;
+
+    var pad = { top: 16, bottom: 24, left: 0, right: 60 };
+    var chartW = W - pad.left - pad.right;
+    var chartH = H - pad.top - pad.bottom;
+
+    var prices = chartPoints.map(function(p) { return p.price; });
+    var high = Math.max.apply(null, prices);
+    var low = Math.min.apply(null, prices);
+
+    // Include PTB in range
+    if (state.priceToBeat) {
+      high = Math.max(high, state.priceToBeat);
+      low = Math.min(low, state.priceToBeat);
+    }
+
+    var range = high - low || 1;
+    high += range * 0.08;
+    low -= range * 0.08;
+    range = high - low;
+
+    // X axis = rolling time window
+    var nowMs = Date.now();
+    var startMs = chartPoints[0].time;
+    var span = nowMs - startMs || 1;
+
+    function x(timeMs) { return pad.left + ((timeMs - startMs) / span) * chartW; }
+    function y(v) { return pad.top + (1 - (v - low) / range) * chartH; }
+
+    // Clear
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid lines + price labels
+    ctx.strokeStyle = 'rgba(76, 201, 138, 0.06)';
+    ctx.lineWidth = 1;
+    for (var g = 0; g <= 4; g++) {
+      var gy = pad.top + (g / 4) * chartH;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, gy);
+      ctx.lineTo(W - pad.right, gy);
+      ctx.stroke();
+      var gPrice = high - (g / 4) * range;
+      ctx.fillStyle = 'rgba(168, 184, 176, 0.5)';
+      ctx.font = '10px JetBrains Mono, monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('$' + gPrice.toFixed(0), W - pad.right + 6, gy + 3);
+    }
+
+    // 5-minute window boundary lines (vertical dashed)
+    ctx.strokeStyle = 'rgba(76, 201, 138, 0.1)';
+    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = 1;
+    var firstBoundary = Math.ceil(startMs / 300000) * 300000;
+    for (var b = firstBoundary; b <= nowMs; b += 300000) {
+      var bx = x(b);
+      if (bx > pad.left && bx < W - pad.right) {
+        ctx.beginPath();
+        ctx.moveTo(bx, pad.top);
+        ctx.lineTo(bx, H - pad.bottom);
+        ctx.stroke();
+      }
+    }
+    ctx.setLineDash([]);
+
+    // PTB line
+    if (state.priceToBeat && state.priceToBeat >= low && state.priceToBeat <= high) {
+      var ptbY = y(state.priceToBeat);
+      ctx.strokeStyle = 'rgba(201, 168, 76, 0.5)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, ptbY);
+      ctx.lineTo(W - pad.right, ptbY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = 'rgba(201, 168, 76, 0.8)';
+      ctx.font = '9px JetBrains Mono, monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('PTB $' + state.priceToBeat.toFixed(0), W - pad.right + 6, ptbY - 4);
+    }
+
+    // Color: green if above PTB, red if below
+    var lastPrice = prices[prices.length - 1];
+    var isUp = state.priceToBeat ? lastPrice >= state.priceToBeat : lastPrice >= prices[0];
+    var lineColor = isUp ? 'rgba(76, 201, 138, 0.9)' : 'rgba(201, 76, 76, 0.9)';
+
+    // Gradient fill
+    var gradient = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
+    gradient.addColorStop(0, isUp ? 'rgba(76, 201, 138, 0.15)' : 'rgba(201, 76, 76, 0.15)');
+    gradient.addColorStop(1, isUp ? 'rgba(76, 201, 138, 0)' : 'rgba(201, 76, 76, 0)');
+
+    ctx.beginPath();
+    ctx.moveTo(x(chartPoints[0].time), y(chartPoints[0].price));
+    for (var i = 1; i < chartPoints.length; i++) {
+      ctx.lineTo(x(chartPoints[i].time), y(chartPoints[i].price));
+    }
+    ctx.lineTo(x(chartPoints[chartPoints.length - 1].time), H - pad.bottom);
+    ctx.lineTo(x(chartPoints[0].time), H - pad.bottom);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Price line
+    ctx.beginPath();
+    ctx.moveTo(x(chartPoints[0].time), y(chartPoints[0].price));
+    for (var i = 1; i < chartPoints.length; i++) {
+      ctx.lineTo(x(chartPoints[i].time), y(chartPoints[i].price));
+    }
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Current price dot
+    var lastPt = chartPoints[chartPoints.length - 1];
+    var lx = x(lastPt.time);
+    var ly = y(lastPt.price);
+    ctx.beginPath();
+    ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+    ctx.fillStyle = lineColor;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(lx, ly, 8, 0, Math.PI * 2);
+    ctx.strokeStyle = isUp ? 'rgba(76, 201, 138, 0.25)' : 'rgba(201, 76, 76, 0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Current price label
+    ctx.fillStyle = lineColor;
+    ctx.font = 'bold 11px JetBrains Mono, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('$' + lastPrice.toFixed(2), W - pad.right + 6, ly + 4);
+
+    // Time labels along bottom (every 5 min)
+    ctx.fillStyle = 'rgba(168, 184, 176, 0.4)';
+    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    for (var b = firstBoundary; b <= nowMs; b += 300000) {
+      var bx = x(b);
+      if (bx > pad.left + 20 && bx < W - pad.right - 20) {
+        var t = new Date(b);
+        var label = t.getHours() + ':' + (t.getMinutes() < 10 ? '0' : '') + t.getMinutes();
+        ctx.fillText(label, bx, H - 4);
+      }
+    }
+
+    // Stats
+    if (els.chartHigh) els.chartHigh.textContent = '$' + Math.max.apply(null, prices).toFixed(2);
+    if (els.chartLow) els.chartLow.textContent = '$' + Math.min.apply(null, prices).toFixed(2);
+    if (els.chartChange) {
+      var change = lastPrice - prices[0];
+      var changePct = (change / prices[0] * 100);
+      var sign = change >= 0 ? '+' : '';
+      els.chartChange.textContent = sign + '$' + Math.abs(change).toFixed(2) + ' (' + sign + changePct.toFixed(2) + '%)';
+      els.chartChange.className = change >= 0 ? 'bullish' : 'bearish';
+    }
+
+    // Tooltip on hover
+    canvas.onmousemove = function(e) {
+      var br = canvas.getBoundingClientRect();
+      var mx = e.clientX - br.left;
+      var hoverTime = startMs + ((mx - pad.left) / chartW) * span;
+      var best = chartPoints[0], bestDiff = Infinity;
+      for (var j = 0; j < chartPoints.length; j++) {
+        var d = Math.abs(chartPoints[j].time - hoverTime);
+        if (d < bestDiff) { bestDiff = d; best = chartPoints[j]; }
+      }
+      var t = new Date(best.time);
+      var ts = t.getHours() + ':' + (t.getMinutes() < 10 ? '0' : '') + t.getMinutes() + ':' + (t.getSeconds() < 10 ? '0' : '') + t.getSeconds();
+      els.chartTooltip.innerHTML = ts + '<br>$' + best.price.toFixed(2);
+      els.chartTooltip.style.display = 'block';
+      els.chartTooltip.style.left = Math.min(mx + 12, W - 100) + 'px';
+      els.chartTooltip.style.top = (y(best.price) - 30) + 'px';
+    };
+    canvas.onmouseleave = function() {
+      els.chartTooltip.style.display = 'none';
+    };
+  }
+
+  // ═══════════════════════════════════════════
   // SMART FINAL PREDICTION ENGINE
   // ═══════════════════════════════════════════
 
@@ -923,11 +1183,7 @@
 
     // New window detected
     if (state.currentWindowStart !== windowStart) {
-      // Save previous window's final prediction
-      if (finalPredLocked && finalPredDirection && finalPredPTB && state.btcPrice) {
-        const predictedOver = finalPredDirection === 'over';
-        savePrediction(state.currentWindowStart, finalPredPTB, state.btcPrice, predictedOver);
-      }
+      // Bot handles saving predictions — website only displays
 
       state.currentWindowStart = windowStart;
       state.priceToBeat = null;
@@ -974,6 +1230,9 @@
         const ta = computeTA(candles);
         updateTAUI(ta);
       } catch (e) { console.error('[AGENT] TA error:', e); }
+
+      // Chart — re-render with latest PTB (price points fed by WebSocket)
+      renderChart();
 
       // If we don't have WS price yet, use candle close
       if (!state.btcPrice && candles && candles.length > 0) {
@@ -1062,6 +1321,7 @@
 
     console.log('[AGENT] Initializing Vanguard Agent dashboard...');
     setStatus('connecting', 'CONNECTING...');
+    loadChartHistory();
     connectRTDS();
     refresh();
 
