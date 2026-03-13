@@ -9,7 +9,9 @@
       "Bash(curl:*)",
       "Bash(python:*)",
       "Bash(find C:\\\\Users\\\\vicen\\\\OneDrive\\\\Desktop\\\\vanguard:*)",
-      "Bash(cd C:\\\\Users\\\\vicen\\\\OneDrive\\\\Desktop\\\\vanguard:*)"
+      "Bash(cd C:\\\\Users\\\\vicen\\\\OneDrive\\\\Desktop\\\\vanguard:*)",
+      "Bash(start:*)",
+      "Bash(npx:*)"
     ]
   }
 }
