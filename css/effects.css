@@ -72,6 +72,7 @@
   position: fixed;
   pointer-events: none;
   z-index: 99998;
+  will-change: transform;
 }
 
 .cursor-reticle {
@@ -87,7 +88,7 @@
   position: absolute;
   background: var(--gold);
   opacity: 0.7;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background 0.25s ease, opacity 0.25s ease;
 }
 
 .cr-top, .cr-bottom {
@@ -117,7 +118,7 @@
   border-color: var(--gold);
   border-style: solid;
   opacity: 0.5;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.25s ease;
 }
 
 .cr-tl { top: 3px;    left: 3px;    border-width: 1px 0 0 1px; }
@@ -134,7 +135,6 @@
   top: 0;
   left: 0;
   transform: translate(-50%, -50%);
-  box-shadow: 0 0 6px var(--gold-glow), 0 0 12px rgba(76, 201, 138, 0.15);
   border-radius: 0;
 }
 

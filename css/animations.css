@@ -8,8 +8,8 @@
 }
 
 @keyframes dotPulse {
-  0%, 100% { box-shadow: 0 0 6px var(--gold-glow); }
-  50% { box-shadow: 0 0 14px var(--gold-glow), 0 0 28px rgba(76, 201, 138, 0.15); }
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
 }
 
 .reveal {

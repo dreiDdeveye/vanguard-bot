@@ -7,8 +7,8 @@
   'use strict';
 
   // ── Supabase config — direct REST API (no client SDK needed) ──
-  const SUPABASE_URL = 'https://hejzmirkxgecykdgcobe.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhlanptaXJreGdlY3lrZGdjb2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyMzA2ODcsImV4cCI6MjA4NjgwNjY4N30.-OSqKS3kCeOttOsVCwUhFfb7IeuAZppVQ7bLcZLTqfg';
+  const SUPABASE_URL = 'https://zrvbmzjsivxlcodsdvrb.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpydmJtempzaXZ4bGNvZHNkdnJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NTkxNTYsImV4cCI6MjA4ODEzNTE1Nn0.gBu0RL9tHBCjYmkiupziTPAsVX3s8TovUdMhjWPjiLw';
   const SB_HEADERS = {
     'apikey': SUPABASE_KEY,
     'Authorization': 'Bearer ' + SUPABASE_KEY,
@@ -591,12 +591,14 @@
     els.btcPrice.textContent = formatPrice(p);
     if (els.priceSource) els.priceSource.textContent = (state.priceSource || '--').toUpperCase();
 
-    // Flash green/red on price change
+    // Flash green/red on price change (no forced reflow)
     if (prevPrice !== null && p !== prevPrice) {
       const dir = p > prevPrice ? 'up' : 'down';
-      els.btcPrice.classList.remove('flash-up', 'flash-down');
-      void els.btcPrice.offsetWidth;
-      els.btcPrice.classList.add('flash-' + dir);
+      const el = els.btcPrice;
+      el.classList.remove('flash-up', 'flash-down');
+      requestAnimationFrame(function() {
+        el.classList.add('flash-' + dir);
+      });
     }
 
     // Show difference from PTB
@@ -635,8 +637,8 @@
     const down = parseFloat(polyData.downPct) || 50;
     if (els.oddsOver) els.oddsOver.style.width = up + '%';
     if (els.oddsUnder) els.oddsUnder.style.width = down + '%';
-    if (els.oddsOverPct) els.oddsOverPct.textContent = 'OVER ' + polyData.upPct + '%';
-    if (els.oddsUnderPct) els.oddsUnderPct.textContent = 'UNDER ' + polyData.downPct + '%';
+    if (els.oddsOverPct) els.oddsOverPct.textContent = 'UP ' + polyData.upPct + '%';
+    if (els.oddsUnderPct) els.oddsUnderPct.textContent = 'DOWN ' + polyData.downPct + '%';
   }
 
   function updateCallUI() {
@@ -684,11 +686,11 @@
     }
 
     if (bullScore > bearScore) {
-      if (els.callText) els.callText.textContent = 'OVER';
-      els.call.className = 'agent-call call-over';
+      if (els.callText) els.callText.textContent = 'UP';
+      els.call.className = 'agent-call call-up';
     } else if (bearScore > bullScore) {
-      if (els.callText) els.callText.textContent = 'UNDER';
-      els.call.className = 'agent-call call-under';
+      if (els.callText) els.callText.textContent = 'DOWN';
+      els.call.className = 'agent-call call-down';
     } else {
       if (els.callText) els.callText.textContent = 'NEUTRAL';
       els.call.className = 'agent-call call-neutral';
@@ -747,40 +749,55 @@
     }
   }
 
+  var lastHistoryHash = '';
+
   function updateHistoryUI(predictions) {
     if (!els.historyList) return;
     if (!predictions || predictions.length === 0) {
-      els.historyList.innerHTML = '<div class="agent-history-empty">No predictions yet</div>';
+      if (lastHistoryHash !== 'empty') {
+        els.historyList.innerHTML = '<div class="agent-history-empty">No predictions yet</div>';
+        lastHistoryHash = 'empty';
+      }
       return;
     }
 
+    // Skip DOM rebuild if data hasn't changed
+    var hash = predictions.length + ':' + (predictions[0] ? predictions[0].ts : 0);
+    if (hash === lastHistoryHash) return;
+    lastHistoryHash = hash;
+
     state.history = predictions;
-    let html = '';
-    for (const p of predictions) {
+
+    // Build in a DocumentFragment to avoid repeated reflows
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < predictions.length; i++) {
+      var p = predictions[i];
       if (!p.ts || p.ptb == null || p.end_price == null) continue;
 
-      const time = new Date(p.ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const ptb = formatPrice(p.ptb);
-      const end = formatPrice(p.end_price);
+      var time = new Date(p.ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      var ptb = formatPrice(p.ptb);
+      var end = formatPrice(p.end_price);
 
-      // Derive predicted direction from result
-      const actualOver = p.end_price > p.ptb;
-      const correct = !!p.over;
-      const predictedOver = correct ? actualOver : !actualOver;
+      var actualOver = p.end_price > p.ptb;
+      var correct = !!p.over;
+      var predictedOver = correct ? actualOver : !actualOver;
 
-      const dir = predictedOver ? 'OVER' : 'UNDER';
-      const result = correct ? 'WIN' : 'LOSS';
-      const resultClass = correct ? 'win' : 'loss';
+      var dir = predictedOver ? 'UP' : 'DOWN';
+      var result = correct ? 'WIN' : 'LOSS';
+      var resultClass = correct ? 'win' : 'loss';
 
-      html += '<div class="agent-history-item">' +
+      var row = document.createElement('div');
+      row.className = 'agent-history-item';
+      row.innerHTML =
         '<span class="agent-history-time">' + time + '</span>' +
         '<span class="agent-history-ptb">' + ptb + '</span>' +
         '<span class="agent-history-dir ' + dir.toLowerCase() + '">' + dir + '</span>' +
         '<span class="agent-history-end">' + end + '</span>' +
-        '<span class="agent-history-result ' + resultClass + '">' + result + '</span>' +
-      '</div>';
+        '<span class="agent-history-result ' + resultClass + '">' + result + '</span>';
+      frag.appendChild(row);
     }
-    els.historyList.innerHTML = html;
+    els.historyList.innerHTML = '';
+    els.historyList.appendChild(frag);
 
     // Compute model performance from history
     computeModelPerf(predictions);
@@ -826,6 +843,10 @@
   // BTC PRICE CHART (canvas)
   // ═══════════════════════════════════════════
 
+  var chartRenderPending = false;
+  var lastChartRender = 0;
+  var CHART_RENDER_INTERVAL = 1000; // render at most once per second
+
   function addChartPoint(price) {
     if (!price) return;
     var now = Date.now();
@@ -843,7 +864,15 @@
       saveChartPoint(now, price);
     }
 
-    renderChart();
+    // Throttled chart rendering — at most once per second via rAF
+    if (!chartRenderPending && now - lastChartRender >= CHART_RENDER_INTERVAL) {
+      chartRenderPending = true;
+      requestAnimationFrame(function() {
+        renderChart();
+        lastChartRender = Date.now();
+        chartRenderPending = false;
+      });
+    }
   }
 
   function saveChartPoint(ts, price) {
@@ -872,18 +901,33 @@
     }
   }
 
+  var chartCtx = null;
+  var chartW = 0;
+  var chartH = 0;
+  var chartDpr = 1;
+
   function renderChart() {
     if (!els.chart || chartPoints.length < 2) return;
 
     var canvas = els.chart;
-    var ctx = canvas.getContext('2d');
+    if (!chartCtx) chartCtx = canvas.getContext('2d');
+    var ctx = chartCtx;
     var dpr = window.devicePixelRatio || 1;
-    var rect = canvas.parentElement.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-    var W = rect.width;
-    var H = rect.height;
+
+    // Only read layout and resize canvas when dimensions actually change
+    var parent = canvas.parentElement;
+    var newW = parent.clientWidth;
+    var newH = parent.clientHeight;
+    if (newW !== chartW || newH !== chartH || dpr !== chartDpr) {
+      chartW = newW;
+      chartH = newH;
+      chartDpr = dpr;
+      canvas.width = newW * dpr;
+      canvas.height = newH * dpr;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var W = chartW;
+    var H = chartH;
 
     var pad = { top: 16, bottom: 24, left: 0, right: 60 };
     var chartW = W - pad.left - pad.right;
@@ -1081,24 +1125,24 @@
       const down = parseFloat(state.downPct);
       if (up > 65) {
         bullScore += 3;
-        signals.push('MARKET STRONG OVER ' + up + '%');
+        signals.push('MARKET STRONG UP ' + up + '%');
       } else if (down > 65) {
         bearScore += 3;
-        signals.push('MARKET STRONG UNDER ' + down + '%');
+        signals.push('MARKET STRONG DOWN ' + down + '%');
       } else if (up > 55) {
         bullScore += 1.5;
-        signals.push('MARKET LEAN OVER ' + up + '%');
+        signals.push('MARKET LEAN UP ' + up + '%');
       } else if (down > 55) {
         bearScore += 1.5;
-        signals.push('MARKET LEAN UNDER ' + down + '%');
+        signals.push('MARKET LEAN DOWN ' + down + '%');
       } else {
         signals.push('MARKET SPLIT ' + up + '/' + down);
       }
     }
 
     // ═══ 2. MEAN-REVERSION — Key insight for 5m predictions ═══
-    // Price above PTB with fading momentum → likely UNDER
-    // Price below PTB with selling exhausted → likely OVER
+    // Price above PTB with fading momentum → likely DOWN
+    // Price below PTB with selling exhausted → likely UP
     if (state.btcPrice && state.priceToBeat && ta) {
       const diff = state.btcPrice - state.priceToBeat;
       const pctDiff = (diff / state.priceToBeat) * 100;
@@ -1110,7 +1154,7 @@
         const recentBearish = ta.recentBearCandles >= 2;
 
         if (momentumFading || recentBearish) {
-          // Price pumped but losing steam → UNDER
+          // Price pumped but losing steam → DOWN
           bearScore += 2;
           signals.push('ABOVE PTB +' + pctDiff.toFixed(3) + '% FADING');
         } else {
@@ -1124,7 +1168,7 @@
         const recentBullish = ta.recentBullCandles >= 2;
 
         if (sellingExhausted || recentBullish) {
-          // Price dipped but recovering → OVER
+          // Price dipped but recovering → UP
           bullScore += 2;
           signals.push('BELOW PTB ' + pctDiff.toFixed(3) + '% RECOVERING');
         } else {
@@ -1241,17 +1285,17 @@
     }
 
     // ═══ FINAL DECISION ═══
-    // Ties go to market odds direction, not defaulting to OVER
+    // Ties go to market odds direction, not defaulting to UP
     const totalScore = bullScore + bearScore;
-    let isOver;
+    let isUp;
     if (bullScore === bearScore) {
       // Tiebreaker: use market odds
       const up = parseFloat(state.upPct || 50);
       const down = parseFloat(state.downPct || 50);
-      isOver = up >= down;
+      isUp = up >= down;
       signals.push('TIE — MARKET DECIDES');
     } else {
-      isOver = bullScore > bearScore;
+      isUp = bullScore > bearScore;
     }
     const margin = Math.abs(bullScore - bearScore);
     const confPct = totalScore > 0 ? (Math.max(bullScore, bearScore) / totalScore * 100) : 50;
@@ -1263,9 +1307,9 @@
 
     // Update UI
     els.finalPred.style.display = 'block';
-    els.finalPred.className = 'agent-final-pred pred-' + (isOver ? 'over' : 'under');
-    if (els.finalIcon) els.finalIcon.textContent = isOver ? '🟢' : '🔴';
-    if (els.finalCall) els.finalCall.textContent = isOver ? 'OVER' : 'UNDER';
+    els.finalPred.className = 'agent-final-pred pred-' + (isUp ? 'up' : 'down');
+    if (els.finalIcon) els.finalIcon.textContent = isUp ? '🟢' : '🔴';
+    if (els.finalCall) els.finalCall.textContent = isUp ? 'UP' : 'DOWN';
     if (els.finalConf) {
       els.finalConf.textContent = confLabel + ' ' + confPct.toFixed(0) + '%';
       els.finalConf.className = 'agent-final-conf ' + confLevel;
@@ -1275,10 +1319,10 @@
     if (els.finalSignals) els.finalSignals.textContent = signals.join(' · ');
 
     // Store for saving at window end
-    finalPredDirection = isOver ? 'over' : 'under';
+    finalPredDirection = isUp ? 'up' : 'down';
     finalPredPTB = state.priceToBeat;
 
-    console.log('[AGENT] FINAL PREDICTION: ' + (isOver ? 'OVER' : 'UNDER') +
+    console.log('[AGENT] FINAL PREDICTION: ' + (isUp ? 'UP' : 'DOWN') +
       ' | Conf: ' + confLabel + ' ' + confPct.toFixed(1) + '%' +
       ' | Bull: ' + bullScore.toFixed(1) + ' Bear: ' + bearScore.toFixed(1));
   }
@@ -1310,17 +1354,17 @@
       }
 
       // Bot has a prediction — display it
-      var isOver = pred.direction === 'over';
+      var isUp = pred.direction === 'over' || pred.direction === 'up';
       finalPredLocked = true;
       finalPredDirection = pred.direction;
       finalPredPTB = pred.ptb;
 
       if (els.finalPred) {
         els.finalPred.style.display = 'block';
-        els.finalPred.className = 'agent-final-pred pred-' + (isOver ? 'over' : 'under');
+        els.finalPred.className = 'agent-final-pred pred-' + (isUp ? 'up' : 'down');
       }
-      if (els.finalIcon) els.finalIcon.textContent = isOver ? '🟢' : '🔴';
-      if (els.finalCall) els.finalCall.textContent = isOver ? 'OVER' : 'UNDER';
+      if (els.finalIcon) els.finalIcon.textContent = isUp ? '🟢' : '🔴';
+      if (els.finalCall) els.finalCall.textContent = isUp ? 'UP' : 'DOWN';
       if (els.finalConf) {
         els.finalConf.textContent = (pred.confidence || 'MED') + ' ' + (pred.conf_pct ? pred.conf_pct.toFixed(0) + '%' : '--');
         var confLevel = pred.confidence === 'HIGH' ? 'high' : pred.confidence === 'LOW' ? 'low' : 'medium';
@@ -1365,9 +1409,16 @@
       setTimeout(refresh, 500);
     }
 
-    // Fetch live prediction from bot (single source of truth)
-    if (!finalPredLocked) {
-      fetchLivePrediction();
+    // Only show prediction at 2-min mark (120s left) and hide after window resets
+    if (left <= 120) {
+      // 2 minutes or less remaining — fetch and show the bot's prediction
+      if (!finalPredLocked) {
+        fetchLivePrediction();
+      }
+    } else {
+      // More than 2 minutes left — hide prediction
+      if (els.finalPred) els.finalPred.style.display = 'none';
+      finalPredLocked = false;
     }
   }
 
@@ -1506,8 +1557,8 @@
     // Full refresh every 30 seconds (candles + TA + Polymarket)
     setInterval(refresh, 30000);
 
-    // History + track record poll every 5 seconds (near real-time)
-    setInterval(refreshHistory, 5000);
+    // History + track record poll every 15 seconds
+    setInterval(refreshHistory, 15000);
 
     // Countdown every second
     setInterval(updateCountdown, 1000);

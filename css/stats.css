@@ -74,8 +74,9 @@
 
 .agent-status-dot.connected {
   background: var(--gold);
-  box-shadow: 0 0 8px var(--gold-glow);
+  box-shadow: 0 0 6px var(--gold-glow);
   animation: dotPulse 2s ease-in-out infinite;
+  will-change: opacity;
 }
 
 .agent-status-dot.connecting,
@@ -86,11 +87,6 @@
 
 .agent-status-dot.error {
   background: #c94c4c;
-}
-
-@keyframes dotPulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
 }
 
 @keyframes dotBlink {
@@ -189,6 +185,7 @@
   gap: 16px;
   position: relative;
   z-index: 1;
+  contain: layout style;
 }
 
 /* ===== AGENT CARD (base) ===== */
@@ -198,7 +195,9 @@
   padding: 28px 24px;
   position: relative;
   overflow: hidden;
-  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.45s ease;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.35s ease;
+  will-change: transform;
+  contain: layout style;
 }
 
 /* HUD corner brackets */
@@ -212,7 +211,8 @@
   border-top: 1px solid var(--gold);
   border-left: 1px solid var(--gold);
   opacity: 0.4;
-  transition: all 0.4s ease;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  transform-origin: top left;
 }
 
 .agent-card::after {
@@ -225,20 +225,19 @@
   border-bottom: 1px solid var(--gold);
   border-right: 1px solid var(--gold);
   opacity: 0.4;
-  transition: all 0.4s ease;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  transform-origin: bottom right;
 }
 
 .agent-card:hover::before,
 .agent-card:hover::after {
   opacity: 1;
-  width: 20px;
-  height: 20px;
+  transform: scale(1.43);
 }
 
 .agent-card:hover {
   border-color: var(--gold-border);
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .agent-card-header {
@@ -282,12 +281,12 @@
 
 @keyframes flashGreen {
   0%, 100% { color: var(--text-bright); }
-  30% { color: var(--gold); text-shadow: 0 0 12px var(--gold-glow); }
+  30% { color: var(--gold); }
 }
 
 @keyframes flashRed {
   0%, 100% { color: var(--text-bright); }
-  30% { color: #c94c4c; text-shadow: 0 0 12px rgba(201, 76, 76, 0.35); }
+  30% { color: #c94c4c; }
 }
 
 .agent-price-source {
@@ -359,15 +358,15 @@
   margin-bottom: 16px;
   border: 1px solid var(--border);
   background: rgba(76, 201, 138, 0.04);
-  transition: all 0.4s ease;
+  transition: border-color 0.35s ease, background 0.35s ease;
 }
 
-.agent-call.call-over {
+.agent-call.call-up {
   border-color: rgba(76, 201, 138, 0.25);
   background: rgba(76, 201, 138, 0.08);
 }
 
-.agent-call.call-under {
+.agent-call.call-down {
   border-color: rgba(201, 76, 76, 0.25);
   background: rgba(201, 76, 76, 0.08);
 }
@@ -385,14 +384,12 @@
   text-transform: uppercase;
 }
 
-.call-over .agent-call-text {
+.call-up .agent-call-text {
   color: var(--gold);
-  text-shadow: 0 0 15px var(--gold-glow);
 }
 
-.call-under .agent-call-text {
+.call-down .agent-call-text {
   color: #c94c4c;
-  text-shadow: 0 0 15px rgba(201, 76, 76, 0.35);
 }
 
 .call-neutral .agent-call-text {
@@ -414,11 +411,11 @@
   height: 100%;
 }
 
-.agent-odds-over {
+.agent-odds-up {
   background: var(--gold);
 }
 
-.agent-odds-under {
+.agent-odds-down {
   background: #c94c4c;
 }
 
@@ -433,11 +430,11 @@
   letter-spacing: 2px;
 }
 
-.agent-odds-label.over {
+.agent-odds-label.up {
   color: var(--gold);
 }
 
-.agent-odds-label.under {
+.agent-odds-label.down {
   color: #c94c4c;
 }
 
@@ -449,7 +446,8 @@
   background: var(--bg);
   position: relative;
   overflow: hidden;
-  animation: finalFadeIn 0.5s ease;
+  animation: finalFadeIn 0.4s ease;
+  contain: layout style;
 }
 
 @keyframes finalFadeIn {
@@ -465,6 +463,7 @@
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--gold), transparent);
   animation: glowPulse 2s ease-in-out infinite;
+  will-change: opacity;
 }
 
 @keyframes glowPulse {
@@ -472,11 +471,11 @@
   50% { opacity: 1; }
 }
 
-.agent-final-pred.pred-over .agent-final-pred-glow {
+.agent-final-pred.pred-up .agent-final-pred-glow {
   background: linear-gradient(90deg, transparent, var(--gold), transparent);
 }
 
-.agent-final-pred.pred-under .agent-final-pred-glow {
+.agent-final-pred.pred-down .agent-final-pred-glow {
   background: linear-gradient(90deg, transparent, #c94c4c, transparent);
 }
 
@@ -541,14 +540,12 @@
   text-transform: uppercase;
 }
 
-.agent-final-pred.pred-over .agent-final-pred-call {
+.agent-final-pred.pred-up .agent-final-pred-call {
   color: var(--gold);
-  text-shadow: 0 0 12px var(--gold-glow);
 }
 
-.agent-final-pred.pred-under .agent-final-pred-call {
+.agent-final-pred.pred-down .agent-final-pred-call {
   color: #c94c4c;
-  text-shadow: 0 0 12px rgba(201, 76, 76, 0.35);
 }
 
 .agent-final-pred-meta {
@@ -736,6 +733,7 @@
   width: 100%;
   height: 220px;
   margin-bottom: 8px;
+  contain: strict;
 }
 
 .agent-chart-container canvas {
@@ -787,6 +785,7 @@
   gap: 0;
   max-height: 500px;
   overflow-y: auto;
+  contain: layout style;
 }
 
 .agent-history-list::-webkit-scrollbar {
@@ -854,8 +853,8 @@
   font-weight: 600;
 }
 
-.agent-history-dir.over { color: var(--gold); }
-.agent-history-dir.under { color: #c94c4c; }
+.agent-history-dir.up { color: var(--gold); }
+.agent-history-dir.down { color: #c94c4c; }
 
 .agent-history-end {
   color: #a8b8b0;
