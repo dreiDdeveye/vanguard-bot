@@ -8,6 +8,9 @@ DROP TABLE IF EXISTS chart_prices CASCADE;
 DROP TABLE IF EXISTS live_prediction CASCADE;
 DROP TABLE IF EXISTS prediction_stats CASCADE;
 DROP TABLE IF EXISTS predictions CASCADE;
+DROP TABLE IF EXISTS track_records CASCADE;
+DROP TABLE IF EXISTS history CASCADE;
+DROP TABLE IF EXISTS ws_metrics CASCADE;
 
 -- ═══════════════════════════════════════════
 -- 1. PREDICTIONS — Historical prediction results
@@ -75,6 +78,41 @@ CREATE TABLE prediction_stats (
 
 INSERT INTO prediction_stats (id) VALUES (1);
 
+-- ═══════════════════════════════════════════════════════════════
+-- 5. TRACK_RECORDS — generic tracking events (optional)
+-- Used by backend or scripts to store arbitrary track records (plays, actions)
+-- ═══════════════════════════════════════════════════════════════
+CREATE TABLE track_records (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id     TEXT,
+  action      TEXT,
+  details     JSONB,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_track_records_user ON track_records (user_id);
+
+-- 6. HISTORY — normalized event history (one row per event)
+CREATE TABLE history (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id     TEXT,
+  event       JSONB NOT NULL,
+  ts          BIGINT, -- optional event timestamp (ms)
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_history_ts ON history (ts DESC);
+
+-- 7. WS_METRICS — websocket activity metrics (time-series)
+CREATE TABLE ws_metrics (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  ts          BIGINT NOT NULL,    -- timestamp in ms
+  ws_count    INT NOT NULL,        -- count of WS messages observed at ts
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_ws_metrics_ts ON ws_metrics (ts DESC);
+
 -- ═══════════════════════════════════════════
 -- ROW LEVEL SECURITY — Allow anon read/write
 -- ═══════════════════════════════════════════
@@ -82,6 +120,9 @@ ALTER TABLE predictions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE live_prediction ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chart_prices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE prediction_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE track_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ws_metrics ENABLE ROW LEVEL SECURITY;
 
 -- Anon can read and insert predictions
 CREATE POLICY "anon_read_predictions" ON predictions FOR SELECT TO anon USING (true);
@@ -96,6 +137,18 @@ CREATE POLICY "anon_update_live" ON live_prediction FOR UPDATE TO anon USING (tr
 -- Anon can read and insert chart_prices
 CREATE POLICY "anon_read_chart" ON chart_prices FOR SELECT TO anon USING (true);
 CREATE POLICY "anon_insert_chart" ON chart_prices FOR INSERT TO anon WITH CHECK (true);
+
+-- Anon can read and insert track_records
+CREATE POLICY "anon_read_track_records" ON track_records FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_insert_track_records" ON track_records FOR INSERT TO anon WITH CHECK (true);
+
+-- Anon can read and insert history
+CREATE POLICY "anon_read_history" ON history FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_insert_history" ON history FOR INSERT TO anon WITH CHECK (true);
+
+-- Anon can read and insert ws_metrics
+CREATE POLICY "anon_read_ws_metrics" ON ws_metrics FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_insert_ws_metrics" ON ws_metrics FOR INSERT TO anon WITH CHECK (true);
 
 -- Anon can read and update prediction_stats
 CREATE POLICY "anon_read_stats" ON prediction_stats FOR SELECT TO anon USING (true);

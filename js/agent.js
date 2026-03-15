@@ -30,6 +30,7 @@
     history: [],
     connected: false,
   };
+  state.wsMsgCount = 0;
 
   // ── DOM refs ──
   const $ = (id) => document.getElementById(id);
@@ -46,6 +47,7 @@
     oddsOver: $('agentOddsOver'),
     oddsUnder: $('agentOddsUnder'),
     oddsOverPct: $('agentOddsOverPct'),
+    finalAnalyzing: $('agentFinalAnalyzing'),
     oddsUnderPct: $('agentOddsUnderPct'),
     wins: $('agentWins'),
     losses: $('agentLosses'),
@@ -57,6 +59,11 @@
     vwap: $('agentVwap'),
     vol: $('agentVol'),
     historyList: $('agentHistoryList'),
+    wsCount: $('wsCount'),
+    allWinStreak: $('allWinStreak'),
+    currWinStreak: $('currWinStreak'),
+    allLossStreak: $('allLossStreak'),
+    currLossStreak: $('currLossStreak'),
     accuracy: $('agentAccuracy'),
     precision: $('agentPrecision'),
     f1: $('agentF1'),
@@ -78,6 +85,9 @@
     chartHigh: $('agentChartHigh'),
     chartLow: $('agentChartLow'),
     chartChange: $('agentChartChange'),
+    wsIndicator: $('wsIndicator'),
+    wsDot: $('wsDot'),
+    wsText: $('wsText'),
   };
 
   // ── Chart state — continuous rolling buffer, persisted to Supabase ──
@@ -444,19 +454,25 @@
       if (res.ok) {
         var data = await res.json();
         if (data && data.length > 0) {
-          var openPrice = parseFloat(data[0][1]);
-          console.log('[AGENT] PTB from Binance 1m candle at', new Date(startMs).toLocaleTimeString(), ':', openPrice);
-          return openPrice;
+          // Normalize fields (Supabase may return booleans as strings)
+          const normalized = data.map((p) => {
+            const overRaw = p.over;
+            const over = (overRaw === true || overRaw === 'true' || overRaw === 't' || overRaw === 1 || overRaw === '1');
+            return Object.assign({}, p, { over: over, ptb: Number(p.ptb), end_price: Number(p.end_price), ts: Number(p.ts) });
+          });
+          console.log('[AGENT] History from Supabase:', normalized.length, 'rows');
+          // Deduplicate by timestamp — keep first (most recent) per ts
+          const seen = {};
+          const deduped = [];
+          for (const p of normalized) {
+            if (!seen[p.ts]) {
+              seen[p.ts] = true;
+              deduped.push(p);
+            }
+          }
+          console.log('[AGENT] Loaded ' + deduped.length + ' predictions (' + normalized.length + ' total, deduped)');
+          return deduped;
         }
-      }
-    } catch (e) {
-      console.error('[AGENT] Binance 1m PTB error:', e.message);
-    }
-
-    // Method 3: Binance current 5m candle open (last resort)
-    try {
-      var res2 = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=1');
-      if (res2.ok) {
         var data2 = await res2.json();
         if (data2 && data2.length > 0) {
           var openPrice2 = parseFloat(data2[0][1]);
@@ -498,6 +514,7 @@
       rtdsWs.onopen = function () {
         console.log('[AGENT] RTDS connected');
         setStatus('connected', 'LIVE');
+        setWsIndicator('connected', 'CONNECTED');
 
         rtdsWs.send(JSON.stringify({
           action: 'subscribe',
@@ -526,11 +543,15 @@
             return;
           }
 
-          // Handle streaming updates
-          if (msg.topic === 'crypto_prices_chainlink' && msg.payload && msg.payload.value) {
+              // Handle streaming updates
+              if (msg.topic === 'crypto_prices_chainlink' && msg.payload && msg.payload.value) {
             state.btcPrice = msg.payload.value;
             state.priceSource = 'chainlink';
             state.connected = true;
+
+                // count WS messages for indicator
+                state.wsMsgCount = (state.wsMsgCount || 0) + 1;
+                if (els.wsCount) els.wsCount.textContent = state.wsMsgCount;
 
             // Snapshot Chainlink price at window boundary for accurate PTB
             var now = Math.floor(Date.now() / 1000);
@@ -550,11 +571,13 @@
       rtdsWs.onerror = function () {
         console.log('[AGENT] RTDS error — will retry');
         setStatus('error', 'ERROR');
+        setWsIndicator('error', 'ERROR');
       };
 
       rtdsWs.onclose = function () {
         console.log('[AGENT] RTDS closed — reconnecting in 5s');
         setStatus('reconnecting', 'RECONNECTING...');
+        setWsIndicator('reconnecting', 'RECONNECTING');
         state.connected = false;
         clearTimeout(rtdsReconnectTimer);
         rtdsReconnectTimer = setTimeout(connectRTDS, 5000);
@@ -562,6 +585,7 @@
     } catch (e) {
       console.error('[AGENT] WS connect failed:', e.message);
       setStatus('error', 'OFFLINE');
+      setWsIndicator('error', 'OFFLINE');
       clearTimeout(rtdsReconnectTimer);
       rtdsReconnectTimer = setTimeout(connectRTDS, 10000);
     }
@@ -575,6 +599,13 @@
     if (!els.statusDot || !els.statusText) return;
     els.statusDot.className = 'agent-status-dot ' + type;
     els.statusText.textContent = text;
+  }
+
+  // Persistent WS indicator updated only on WebSocket events
+  function setWsIndicator(state, text) {
+    if (!els.wsIndicator || !els.wsDot || !els.wsText) return;
+    els.wsDot.className = 'ws-dot ' + state; // e.g. 'connected', 'reconnecting', 'error'
+    els.wsText.textContent = 'WS: ' + (text || state.toUpperCase());
   }
 
   function formatPrice(n) {
@@ -801,6 +832,37 @@
 
     // Compute model performance from history
     computeModelPerf(predictions);
+
+    // Update history meta (streaks)
+    try { updateHistoryStatsUI(predictions); } catch (e) { console.error('[AGENT] Streaks update error:', e); }
+  }
+
+  function updateHistoryStatsUI(predictions) {
+    if (!predictions) return;
+    // normalize and sort ascending by ts
+    const arr = predictions.slice().filter(p => p && (p.over === true || p.over === false || p.over === 'true' || p.over === 'false' || p.over === '1' || p.over === '0')).map(p => ({ ts: Number(p.ts), over: (p.over === true || p.over === 'true' || p.over === 't' || p.over === 1 || p.over === '1') })).sort((a,b)=>a.ts - b.ts);
+    if (arr.length === 0) return;
+    // compute overall longest win/loss streaks
+    let maxWin = 0, maxLoss = 0, cur = 0, curType = null;
+    for (const p of arr) {
+      if (p.over) {
+        if (curType === 'win') cur++; else { curType = 'win'; cur = 1; }
+        if (cur > maxWin) maxWin = cur;
+      } else {
+        if (curType === 'loss') cur++; else { curType = 'loss'; cur = 1; }
+        if (cur > maxLoss) maxLoss = cur;
+      }
+    }
+    // compute current trailing streak
+    let currWin = 0, currLoss = 0;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      if (arr[i].over) { if (currLoss) break; currWin++; } else { if (currWin) break; currLoss++; }
+    }
+    // update DOM
+    if (els.allWinStreak) els.allWinStreak.textContent = maxWin;
+    if (els.currWinStreak) els.currWinStreak.textContent = currWin;
+    if (els.allLossStreak) els.allLossStreak.textContent = maxLoss;
+    if (els.currLossStreak) els.currLossStreak.textContent = currLoss;
   }
 
   function computeModelPerf(rows) {
@@ -1350,6 +1412,7 @@
       if (pred.direction === 'pending' || !pred.direction) {
         // Bot hasn't made prediction yet
         if (els.finalPred) els.finalPred.style.display = 'none';
+        if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'flex';
         return;
       }
 
@@ -1363,6 +1426,7 @@
         els.finalPred.style.display = 'block';
         els.finalPred.className = 'agent-final-pred pred-' + (isUp ? 'up' : 'down');
       }
+      if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
       if (els.finalIcon) els.finalIcon.textContent = isUp ? '🟢' : '🔴';
       if (els.finalCall) els.finalCall.textContent = isUp ? 'UP' : 'DOWN';
       if (els.finalConf) {
@@ -1409,16 +1473,23 @@
       setTimeout(refresh, 500);
     }
 
-    // Only show prediction at 2-min mark (120s left) and hide after window resets
-    if (left <= 120) {
-      // 2 minutes or less remaining — fetch and show the bot's prediction
+    // Show analyzing at 3-min mark (<=180s) and show final vote at 2-min mark (<=120s)
+    if (left > 180) {
+      // More than 3 minutes left: hide both
+      if (els.finalPred) els.finalPred.style.display = 'none';
+      if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
+      finalPredLocked = false;
+    } else if (left > 120 && left <= 180) {
+      // Between 3 and 2 minutes remaining: show analyzing
+      if (els.finalPred) els.finalPred.style.display = 'none';
+      if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'flex';
+      finalPredLocked = false;
+    } else {
+      // 2 minutes or less: fetch and show the bot's final prediction
+      if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
       if (!finalPredLocked) {
         fetchLivePrediction();
       }
-    } else {
-      // More than 2 minutes left — hide prediction
-      if (els.finalPred) els.finalPred.style.display = 'none';
-      finalPredLocked = false;
     }
   }
 
@@ -1550,6 +1621,7 @@
 
     console.log('[AGENT] Initializing Vanguard Agent dashboard...');
     setStatus('connecting', 'CONNECTING...');
+    setWsIndicator('reconnecting', 'CONNECTING');
     loadChartHistory();
     connectRTDS();
     refresh();

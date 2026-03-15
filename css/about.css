@@ -15,8 +15,17 @@
   overflow: visible;
 }
 
+.about::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.25); /* lighten background image overlay */
+  pointer-events: none;
+  z-index: 0;
+}
+
 .about-panel {
-  background: var(--bg-glass);
+  background: color-mix(in srgb, var(--bg-glass) 75%, #ffffff 25%); /* slightly lighter panel */
   border: 1px solid var(--border);
   border-left: none;
   padding: 60px 48px 60px 48px;

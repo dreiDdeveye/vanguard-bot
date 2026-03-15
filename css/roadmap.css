@@ -28,6 +28,104 @@
   padding: 0 24px;
 }
 
+/* Card grid layout (replacement for zigzag) */
+.roadmap-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  padding: 0 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.roadmap-card {
+  background: color-mix(in srgb, var(--bg-glass-solid) 82%, #ffffff 18%);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, rgba(255,255,255,0.03) 20%);
+  padding: 20px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.roadmap-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.32);
+  border-color: var(--gold-border);
+}
+
+.roadmap-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.roadmap-card h3 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  margin: 0;
+  color: var(--text-bright);
+}
+
+.card-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-list li {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.roadmap-progress {
+  flex: 1 1 auto;
+  height: 10px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+.roadmap-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold) 0%, color-mix(in srgb, var(--gold) 60%, #4cc98a 40%) 100%);
+  transition: width 0.6s ease;
+}
+
+.roadmap-percent {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-bright);
+  min-width: 40px;
+  text-align: right;
+}
+
+.roadmap-card.completed .roadmap-progress-fill { box-shadow: 0 4px 10px rgba(76,201,138,0.08); }
+.roadmap-card.active .roadmap-progress-fill { box-shadow: 0 6px 16px rgba(255,200,80,0.12); }
+.roadmap-card.upcoming { opacity: 0.9 }
+
+@media (max-width: 992px) {
+  .roadmap-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .roadmap-grid { grid-template-columns: 1fr; }
+}
+
 .zigzag-line {
   position: absolute;
   left: 50%;

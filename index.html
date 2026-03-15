@@ -282,8 +282,8 @@
   <section class="mint" id="mint">
     <div class="mint-container">
       <div class="mint-header">
-        <h2 class="mint-title reveal-mask">Mint Now</h2>
-        <p class="mint-subtitle">Connect your wallet and claim your Vanguard.</p>
+        <h2 class="mint-title reveal-mask">Mint Coming Soon</h2>
+        <p class="mint-subtitle">Minting will open soon — follow updates for the launch.</p>
       </div>
       <div class="mint-card reveal">
         <div class="mint-supply">
@@ -299,7 +299,7 @@
           <span class="mint-price-label">Price per NFT</span>
           <span class="mint-price-value">0.08 ETH</span>
         </div>
-        <div class="mint-quantity">
+        <div class="mint-quantity" style="display:none;">
           <button class="mint-qty-btn" id="mintQtyMinus">−</button>
           <span class="mint-qty-display" id="mintQtyDisplay">1</span>
           <button class="mint-qty-btn" id="mintQtyPlus">+</button>
@@ -313,10 +313,10 @@
           <span class="mint-wallet-address" id="mintWalletAddr"></span>
           <button class="mint-wallet-disconnect" id="mintDisconnect">Disconnect</button>
         </div>
-        <!-- Connect button (shown when not connected) -->
-        <button class="mint-btn connect" id="mintConnectBtn">Connect Wallet</button>
-        <!-- Mint button (shown after connect) -->
+        <!-- Mint is paused — show coming soon button -->
+        <button class="mint-btn connect" id="mintConnectBtn" style="display:none;">Connect Wallet</button>
         <button class="mint-btn do-mint" id="mintActionBtn" style="display: none;">Mint</button>
+        <button class="mint-btn coming-soon" id="mintComingBtn" disabled>Coming Soon</button>
         <div class="mint-status" id="mintStatus"></div>
         <div class="mint-network">Sepolia Testnet</div>
       </div>
@@ -328,62 +328,72 @@
     <div class="container">
       <h2 class="roadmap-title">Roadmap</h2>
     </div>
-    <div class="roadmap-zigzag">
-      <div class="zigzag-line" aria-hidden="true"></div>
-      <div class="timeline-node done node-left">
-        <div class="node-dot"></div>
-        <div class="node-content">
+    <div class="roadmap-grid">
+      <div class="roadmap-card completed">
+        <div class="card-header">
           <span class="node-phase">Phase 01</span>
           <h3>Foundation</h3>
-          <ul>
-            <li>Smart contract dev & audit</li>
-            <li>Website & brand launch</li>
-            <li>Community building</li>
-            <li>Whitelist campaign</li>
-          </ul>
-          <span class="node-status complete">Complete</span>
+        </div>
+        <ul class="card-list">
+          <li>Smart contract dev & audit</li>
+          <li>Website & brand launch</li>
+          <li>Community building</li>
+          <li>Whitelist campaign</li>
+        </ul>
+        <div class="card-footer">
+          <div class="roadmap-progress"><div class="roadmap-progress-fill" style="width:100%"></div></div>
+          <span class="roadmap-percent">100%</span>
         </div>
       </div>
-      <div class="timeline-node done node-right">
-        <div class="node-dot"></div>
-        <div class="node-content">
+
+      <div class="roadmap-card completed">
+        <div class="card-header">
           <span class="node-phase">Phase 02</span>
           <h3>Launch</h3>
-          <ul>
-            <li>Public mint</li>
-            <li>Rarity rankings revealed</li>
-            <li>OpenSea & Blur listings</li>
-            <li>Holder verification</li>
-          </ul>
-          <span class="node-status complete">Complete</span>
+        </div>
+        <ul class="card-list">
+          <li>Public mint</li>
+          <li>Rarity rankings revealed</li>
+          <li>OpenSea & Blur listings</li>
+          <li>Holder verification</li>
+        </ul>
+        <div class="card-footer">
+          <div class="roadmap-progress"><div class="roadmap-progress-fill" style="width:100%"></div></div>
+          <span class="roadmap-percent">100%</span>
         </div>
       </div>
-      <div class="timeline-node active node-left">
-        <div class="node-dot pulse"></div>
-        <div class="node-content">
+
+      <div class="roadmap-card active">
+        <div class="card-header">
           <span class="node-phase">Phase 03</span>
           <h3>Growth</h3>
-          <ul>
-            <li>$VNGRD token launch</li>
-            <li>Staking goes live</li>
-            <li>Merch store for holders</li>
-            <li>DAO governance</li>
-          </ul>
-          <span class="node-status in-progress">In Progress</span>
+        </div>
+        <ul class="card-list">
+          <li>$VNGRD token launch</li>
+          <li>Staking goes live</li>
+          <li>Merch store for holders</li>
+          <li>DAO governance</li>
+        </ul>
+        <div class="card-footer">
+          <div class="roadmap-progress"><div class="roadmap-progress-fill" style="width:60%"></div></div>
+          <span class="roadmap-percent">60%</span>
         </div>
       </div>
-      <div class="timeline-node upcoming node-right">
-        <div class="node-dot"></div>
-        <div class="node-content">
+
+      <div class="roadmap-card upcoming">
+        <div class="card-header">
           <span class="node-phase">Phase 04</span>
           <h3>Expansion</h3>
-          <ul>
-            <li>Utility platform beta</li>
-            <li>NFT upgrades & customization</li>
-            <li>Cross-chain expansion</li>
-            <li>Strategic partnerships</li>
-          </ul>
-          <span class="node-status">Upcoming</span>
+        </div>
+        <ul class="card-list">
+          <li>Utility platform beta</li>
+          <li>NFT upgrades & customization</li>
+          <li>Cross-chain expansion</li>
+          <li>Strategic partnerships</li>
+        </ul>
+        <div class="card-footer">
+          <div class="roadmap-progress"><div class="roadmap-progress-fill" style="width:0%"></div></div>
+          <span class="roadmap-percent">0%</span>
         </div>
       </div>
     </div>
@@ -403,6 +413,10 @@
       <div class="agent-status-bar" id="agentStatusBar">
         <span class="agent-status-dot" id="agentStatusDot"></span>
         <span class="agent-status-text" id="agentStatusText">CONNECTING...</span>
+      </div>
+      <div class="ws-indicator" id="wsIndicator" title="WebSocket status">
+        <span class="ws-dot" id="wsDot"></span>
+        <span class="ws-text" id="wsText">WS: Connecting</span>
       </div>
 
       <!-- Model info banner -->
@@ -450,6 +464,10 @@
           </div>
           <div class="agent-call" id="agentCall">
             <span class="agent-call-text" id="agentCallText">WAITING...</span>
+          </div>
+          <div class="agent-final-analyzing" id="agentFinalAnalyzing" style="display:none;">
+            <div class="dot-spinner"></div>
+            <span>Analyzing final votes...</span>
           </div>
           <div class="agent-odds">
             <div class="agent-odds-bar">
@@ -594,6 +612,15 @@
             <span>END PRICE</span>
             <span>RESULT</span>
           </div>
+          <div class="agent-history-meta" id="agentHistoryMeta">
+            <div class="ws-count">WS messages: <span id="wsCount">180</span></div>
+            <div class="streaks">
+              <div class="streak-group">All-time Win Streak: <span id="allWinStreak">60</span></div>
+              <div class="streak-group">Current Win Streak: <span id="currWinStreak">5</span></div>
+              <div class="streak-group">All-time Loss Streak: <span id="allLossStreak">3</span></div>
+              <div class="streak-group">Current Loss Streak: <span id="currLossStreak">0</span></div>
+            </div>
+          </div>
           <div class="agent-history-list" id="agentHistoryList">
             <div class="agent-history-empty">Loading predictions...</div>
           </div>
@@ -636,7 +663,7 @@
               <svg class="faq-icon" viewBox="0 0 24 24" width="20" height="20"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </button>
             <div class="faq-answer">
-              <p>Minting is live right now. Connect your wallet and mint directly from this site.</p>
+              <p>Minting is coming soon. Follow our announcements for the launch date.</p>
             </div>
           </div>
           <div class="faq-item">

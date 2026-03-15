@@ -615,11 +615,15 @@ async function loadStats() {
     // Deduplicate by timestamp — only count first entry per window
     const seen = {};
     let w = 0, l = 0;
-    for (const p of data) {
+    for (const pOrig of data) {
+      // Normalize 'over' which may arrive as 'true'/'false' strings
+      const p = Object.assign({}, pOrig, { ts: Number(pOrig.ts) });
       if (seen[p.ts]) continue;
       seen[p.ts] = true;
-      if (p.over === true) w++;
-      else if (p.over === false) l++;
+      const overRaw = pOrig.over;
+      const over = (overRaw === true || overRaw === 'true' || overRaw === 't' || overRaw === 1 || overRaw === '1');
+      if (over) w++;
+      else l++;
     }
     state.wins = w;
     state.losses = l;

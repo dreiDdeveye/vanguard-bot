@@ -253,6 +253,13 @@
   transform: none;
 }
 
+.mint-btn.coming-soon {
+  background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  color: var(--text-muted);
+  border: 1px solid rgba(255,255,255,0.03);
+  box-shadow: none;
+}
+
 .mint-btn::before {
   content: '';
   position: absolute;
