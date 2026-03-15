@@ -595,6 +595,11 @@ async function savePrediction(windowStart, ptb, endPrice, predictedOver) {
       const total = state.wins + state.losses;
       const wr = total > 0 ? ((state.wins / total) * 100).toFixed(1) : '0';
       console.log(`[BOT] ${result} | Predicted ${predictedOver ? 'UP' : 'DOWN'} | PTB $${ptb.toFixed(2)} → End $${endPrice.toFixed(2)} | W:${state.wins} L:${state.losses} WR:${wr}%`);
+      try {
+        await savePredictionStats(state.wins, state.losses);
+      } catch (e) {
+        console.error('[BOT] Save stats after prediction error:', e.message || e);
+      }
     }
   } catch (e) {
     console.error('[BOT] Save exception:', e.message);
@@ -619,8 +624,47 @@ async function loadStats() {
     state.wins = w;
     state.losses = l;
     console.log(`[BOT] Loaded stats (deduped): ${w}W / ${l}L (${data.length} rows, ${Object.keys(seen).length} unique)`);
+      // Persist aggregated stats to prediction_stats table (id=1)
+      try {
+        await savePredictionStats(state.wins, state.losses);
+      } catch (e) {
+        console.error('[BOT] Persist stats error:', e.message || e);
+      }
   } catch (e) {
     console.error('[BOT] Load stats error:', e.message);
+  }
+}
+
+async function savePredictionStats(wins, losses) {
+  try {
+    const total = (wins || 0) + (losses || 0);
+    const win_rate = total > 0 ? Math.round((wins / total) * 1000) / 10 : 0; // one decimal percent
+    const payload = { wins: wins || 0, losses: losses || 0, win_rate: win_rate, updated_at: new Date().toISOString() };
+
+    const url = SUPABASE_URL + '/rest/v1/prediction_stats?id=eq.1';
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: SB_HEADERS,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      // Try insert if patch failed (record may not exist)
+      const text = await res.text();
+      console.warn('[BOT] Save stats PATCH failed:', res.status, text);
+      const createUrl = SUPABASE_URL + '/rest/v1/prediction_stats';
+      const res2 = await fetch(createUrl, {
+        method: 'POST',
+        headers: SB_HEADERS,
+        body: JSON.stringify([{ id: 1, ...payload }]),
+      });
+      if (!res2.ok) {
+        const t2 = await res2.text();
+        throw new Error('Create stats failed: ' + res2.status + ' ' + t2);
+      }
+    }
+    return true;
+  } catch (e) {
+    throw e;
   }
 }
 

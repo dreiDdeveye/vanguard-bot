@@ -5,6 +5,10 @@
   padding: 180px 0 160px;
   position: relative;
   background: var(--bg);
+  background-image: url('../public/bg.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
   display: grid;
   grid-template-columns: 55% 1fr;
   gap: 0;
