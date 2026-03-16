@@ -837,6 +837,7 @@
 .agent-card-history {
   grid-column: 1 / -1;
   border-left: 3px solid var(--gold-border);
+  background: rgba(18, 26, 22, 0.4) !important;
 }
 
 .agent-history-list {
@@ -865,7 +866,7 @@
 }
 
 .agent-history-meta .streak-group {
-  background: rgba(255,255,255,0.02);
+  background: rgba(76, 201, 138, 0.08);
   padding: 6px 10px;
   border-radius: 6px;
   color: var(--text-bright);
@@ -882,13 +883,13 @@
 }
 
 .agent-history-list::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: rgba(76, 201, 138, 0.3);
 }
 
 .agent-history-empty {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--text-secondary);
+  color: #ffffff;
   letter-spacing: 2px;
   text-align: center;
   padding: 30px 0;
@@ -900,7 +901,7 @@
   gap: 12px;
   padding: 8px 0;
   margin-bottom: 4px;
-  border-bottom: 1px solid rgba(76, 201, 138, 0.12);
+  border-bottom: 1px solid rgba(76, 201, 138, 0.25);
   font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 3px;
@@ -914,7 +915,7 @@
   align-items: center;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid rgba(76, 201, 138, 0.04);
+  border-bottom: 1px solid rgba(76, 201, 138, 0.12);
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-bright);
