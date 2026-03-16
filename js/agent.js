@@ -610,7 +610,9 @@
 
   function formatPrice(n) {
     if (n == null) return '--';
-    return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const num = typeof n === 'number' ? n : parseFloat(n);
+    if (isNaN(num)) return '--';
+    return '$' + num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   let prevPrice = null;
@@ -654,9 +656,10 @@
 
     // PTB from Polymarket startPrice (authoritative — used for settlement)
     if (polyData.startingPrice) {
-      state.priceToBeat = polyData.startingPrice;
+      const ptbNum = typeof polyData.startingPrice === 'number' ? polyData.startingPrice : parseFloat(polyData.startingPrice);
+      state.priceToBeat = ptbNum;
       ptbSource = polyData.ptbSource || 'polymarket';
-      if (els.ptb) els.ptb.textContent = formatPrice(polyData.startingPrice);
+      if (els.ptb) els.ptb.textContent = formatPrice(ptbNum);
     }
 
     state.upPct = polyData.upPct;
@@ -1420,7 +1423,7 @@
       var isUp = pred.direction === 'over' || pred.direction === 'up';
       finalPredLocked = true;
       finalPredDirection = pred.direction;
-      finalPredPTB = pred.ptb;
+      finalPredPTB = pred.ptb ? parseFloat(pred.ptb) : null;
 
       if (els.finalPred) {
         els.finalPred.style.display = 'block';
