@@ -80,7 +80,7 @@
 }
 
 .card-list li {
-  color: var(--text-secondary);
+  color: #ffffff;
   font-size: 13px;
 }
 
@@ -158,7 +158,7 @@
   width: 12px;
   height: 12px;
   border-radius: 0;
-  background: var(--text-muted);
+  background: #ffffff;
   border: 2px solid var(--bg-secondary);
   position: absolute;
   z-index: 2;
@@ -178,7 +178,7 @@
 }
 
 .timeline-node.done .node-dot {
-  background: var(--text-secondary);
+  background: #ffffff;
 }
 
 .timeline-node.active .node-dot {
@@ -256,7 +256,7 @@
 .node-phase {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--text-muted);
+  color: #ffffff;
   letter-spacing: 3px;
   text-transform: uppercase;
 }
@@ -281,7 +281,7 @@
 
 .node-content li {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: #ffffff;
   padding-left: 16px;
   position: relative;
 }
@@ -294,12 +294,12 @@
   width: 5px;
   height: 5px;
   border-radius: 0;
-  background: var(--text-muted);
+  background: #ffffff;
   transform: rotate(45deg);
 }
 
 .timeline-node.done .node-content li::before {
-  background: var(--text-secondary);
+  background: #ffffff;
 }
 
 .timeline-node.active .node-content li::before {
@@ -316,7 +316,7 @@
 }
 
 .node-status.complete {
-  color: var(--text-secondary);
+  color: #ffffff;
 }
 
 .node-status.in-progress {
@@ -325,5 +325,5 @@
 }
 
 .timeline-node.upcoming .node-status {
-  color: var(--text-muted);
+  color: #ffffff;
 }
