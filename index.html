@@ -600,6 +600,35 @@
           </div>
         </div>
 
+        <!-- Track Record Card -->
+        <div class="agent-card agent-card-track">
+          <div class="agent-card-header">
+            <span class="agent-card-label">TRACK RECORD</span>
+          </div>
+          <div class="agent-track-stats">
+            <div class="agent-track-row">
+              <span class="agent-track-label">WS Messages:</span>
+              <span class="agent-track-value" id="wsCount">55</span>
+            </div>
+            <div class="agent-track-row">
+              <span class="agent-track-label">All-time Win Streak:</span>
+              <span class="agent-track-value" id="allWinStreak">60</span>
+            </div>
+            <div class="agent-track-row">
+              <span class="agent-track-label">Current Win Streak:</span>
+              <span class="agent-track-value" id="currWinStreak">2</span>
+            </div>
+            <div class="agent-track-row">
+              <span class="agent-track-label">All-time Loss Streak:</span>
+              <span class="agent-track-value" id="allLossStreak">3</span>
+            </div>
+            <div class="agent-track-row">
+              <span class="agent-track-label">Current Loss Streak:</span>
+              <span class="agent-track-value" id="currLossStreak">0</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Recent Predictions History -->
         <div class="agent-card agent-card-history">
           <div class="agent-card-header">
@@ -611,15 +640,6 @@
             <span>CALL</span>
             <span>END PRICE</span>
             <span>RESULT</span>
-          </div>
-          <div class="agent-history-meta" id="agentHistoryMeta">
-            <div class="ws-count">WS messages: <span id="wsCount">55</span></div>
-            <div class="streaks">
-              <div class="streak-group">All-time Win Streak: <span id="allWinStreak">60</span></div>
-              <div class="streak-group">Current Win Streak: <span id="currWinStreak">2</span></div>
-              <div class="streak-group">All-time Loss Streak: <span id="allLossStreak">3</span></div>
-              <div class="streak-group">Current Loss Streak: <span id="currLossStreak">0</span></div>
-            </div>
           </div>
           <div class="agent-history-list" id="agentHistoryList">
             <div class="agent-history-empty">Loading predictions...</div>

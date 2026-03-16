@@ -833,6 +833,45 @@
 .agent-chart-stat .bullish { color: var(--gold); }
 .agent-chart-stat .bearish { color: #c94c4c; }
 
+/* ===== TRACK RECORD CARD ===== */
+.agent-card-track {
+  border-left: 3px solid var(--gold);
+}
+
+.agent-track-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.agent-track-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(76, 201, 138, 0.1);
+}
+
+.agent-track-row:last-child {
+  border-bottom: none;
+}
+
+.agent-track-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.agent-track-value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--gold);
+}
+
 /* ===== HISTORY CARD ===== */
 .agent-card-history {
   grid-column: 1 / -1;
@@ -848,31 +887,6 @@
   overflow-y: auto;
   contain: layout style;
 }
-
-.agent-history-meta {
-  display: flex;
-  gap: 18px;
-  align-items: center;
-  margin: 10px 0 18px;
-  font-family: var(--font-mono);
-  color: #ffffff;
-  font-size: 13px;
-}
-
-.agent-history-meta .streaks {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.agent-history-meta .streak-group {
-  background: rgba(76, 201, 138, 0.08);
-  padding: 6px 10px;
-  border-radius: 6px;
-  color: var(--text-bright);
-}
-
-.ws-count { font-weight: 600; color: var(--gold); }
 
 .agent-history-list::-webkit-scrollbar {
   width: 4px;
