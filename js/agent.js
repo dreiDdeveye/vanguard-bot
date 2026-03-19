@@ -15,7 +15,91 @@
     'Content-Type': 'application/json',
   };
 
-  // ── State ──
+  // ═══════════════════════════════════════════
+  // ACCESS GATE — Admin issues codes manually
+  // ═══════════════════════════════════════════
+
+  const ACCESS_LS_KEY = 'vg_access_code';
+
+  function isUnlocked() {
+    try { return !!localStorage.getItem(ACCESS_LS_KEY); } catch(e) { return false; }
+  }
+
+  async function claimCode(code) {
+    const unlockBtn = document.getElementById('agentUnlockBtn');
+    if (!code || code.trim() === '') { setAccessMsg('error', 'Please enter your access code.'); return; }
+
+    unlockBtn.disabled = true;
+    setAccessMsg('info', 'Verifying...');
+
+    try {
+      // Check code exists and is unclaimed
+      const res = await fetch(
+        SUPABASE_URL + '/rest/v1/access_codes?code=eq.' + encodeURIComponent(code.trim().toUpperCase()) + '&claimed=eq.false',
+        { headers: SB_HEADERS }
+      );
+      if (!res.ok) throw new Error('Fetch failed');
+      const data = await res.json();
+
+      if (!data || data.length === 0) {
+        setAccessMsg('error', 'Invalid or already used code. Contact admin for a new one.');
+        unlockBtn.disabled = false;
+        return;
+      }
+
+      // Claim it
+      const claimRes = await fetch(
+        SUPABASE_URL + '/rest/v1/access_codes?code=eq.' + encodeURIComponent(code.trim().toUpperCase()),
+        {
+          method: 'PATCH',
+          headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ claimed: true, claimed_at: new Date().toISOString() }),
+        }
+      );
+      if (!claimRes.ok) throw new Error('Claim failed');
+
+      try { localStorage.setItem(ACCESS_LS_KEY, code.trim().toUpperCase()); } catch(e) {}
+      setAccessMsg('success', 'Access granted! Loading...');
+      setTimeout(unlockUI, 700);
+
+    } catch (e) {
+      setAccessMsg('error', 'Error verifying code. Try again.');
+      console.error('[AGENT] Claim code error:', e);
+      unlockBtn.disabled = false;
+    }
+  }
+
+  function setAccessMsg(type, text) {
+    const msg = document.getElementById('agentAccessMsg');
+    if (!msg) return;
+    msg.className = 'agent-access-msg ' + type;
+    msg.textContent = text;
+  }
+
+  function unlockUI() {
+    const gate = document.getElementById('agentAccessGate');
+    const wrap = document.getElementById('agentContentWrap');
+    if (gate) gate.classList.remove('visible');
+    if (wrap) wrap.classList.remove('locked');
+    startAgent();
+  }
+
+  function showAccessGate() {
+    const gate = document.getElementById('agentAccessGate');
+    const wrap = document.getElementById('agentContentWrap');
+    if (gate) gate.classList.add('visible');
+    if (wrap) wrap.classList.add('locked');
+
+    const unlockBtn = document.getElementById('agentUnlockBtn');
+    const input = document.getElementById('agentCodeInput');
+
+    if (unlockBtn) unlockBtn.addEventListener('click', function() {
+      claimCode(input ? input.value : '');
+    });
+    if (input) input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') claimCode(input.value);
+    });
+  }
   const state = {
     btcPrice: null,
     priceSource: null,
@@ -367,15 +451,20 @@
         console.warn('[AGENT] No predictions in Supabase');
         return [];
       }
-      // Deduplicate by timestamp — keep first (most recent) per ts
-      const seen = {};
-      const deduped = [];
+
+      // Deduplicate by timestamp — prefer 'vanguard-skip' over any other source
+      // so a skip always wins over a bot prediction for the same window
+      const byTs = {};
       for (const p of data) {
-        if (!seen[p.ts]) {
-          seen[p.ts] = true;
-          deduped.push(p);
+        const ts = Number(p.ts);
+        if (!byTs[ts]) {
+          byTs[ts] = p;
+        } else {
+          // Skip entry takes priority over any real prediction for the same window
+          if (p.source === 'vanguard-skip') byTs[ts] = p;
         }
       }
+      const deduped = Object.values(byTs).sort((a, b) => b.ts - a.ts);
       console.log('[AGENT] Loaded ' + deduped.length + ' predictions (' + data.length + ' total, deduped)');
       return deduped;
     } catch (e) {
@@ -487,14 +576,20 @@
     return null;
   }
 
-  // ── Compute track record from history ──
+  // ── Compute track record from history — skips excluded ──
   function computeTrackRecord(predictions) {
     let wins = 0, losses = 0;
     for (const p of predictions) {
-      if (p.source === 'vanguard-skip') continue; // skip NO TRADE entries
-      if (p.ptb == null || p.end_price == null || p.over == null) continue;
-      if (p.over) wins++;
-      else losses++;
+      // Exclude skip entries entirely
+      if (p.source === 'vanguard-skip') continue;
+      // Exclude any entry without a real over value
+      if (p.over === null || p.over === undefined || p.end_price === null || p.end_price === undefined || p.ptb === null || p.ptb === undefined) continue;
+      // Normalize over — could be boolean, string, or number from Supabase
+      const won = (p.over === true || p.over === 'true' || p.over === 't' || p.over === 1 || p.over === '1');
+      const lost = (p.over === false || p.over === 'false' || p.over === 'f' || p.over === 0 || p.over === '0');
+      if (won) wins++;
+      else if (lost) losses++;
+      // If neither, skip (corrupted entry)
     }
     return { wins, losses };
   }
@@ -860,7 +955,14 @@
   function updateHistoryStatsUI(predictions) {
     if (!predictions) return;
     // normalize and sort ascending by ts
-    const arr = predictions.slice().filter(p => p && p.source !== 'vanguard-skip' && (p.over === true || p.over === false || p.over === 'true' || p.over === 'false' || p.over === '1' || p.over === '0')).map(p => ({ ts: Number(p.ts), over: (p.over === true || p.over === 'true' || p.over === 't' || p.over === 1 || p.over === '1') })).sort((a,b)=>a.ts - b.ts);
+    const arr = predictions.slice()
+      .filter(p => p &&
+        p.source !== 'vanguard-skip' &&
+        p.over !== null && p.over !== undefined &&
+        (p.over === true || p.over === false || p.over === 'true' || p.over === 'false' || p.over === 't' || p.over === 'f' || p.over === 1 || p.over === 0 || p.over === '1' || p.over === '0')
+      )
+      .map(p => ({ ts: Number(p.ts), over: (p.over === true || p.over === 'true' || p.over === 't' || p.over === 1 || p.over === '1') }))
+      .sort((a, b) => a.ts - b.ts);
     if (arr.length === 0) return;
     // compute overall longest win/loss streaks
     let maxWin = 0, maxLoss = 0, cur = 0, curType = null;
@@ -890,10 +992,10 @@
 
     let tp = 0, tn = 0, fp = 0, fn = 0;
     for (const r of rows) {
-      if (r.source === 'vanguard-skip') continue; // exclude skips
-      if (r.ptb == null || r.end_price == null) continue;
+      if (r.source === 'vanguard-skip') continue;
+      if (r.ptb == null || r.end_price == null || r.over == null || r.over === undefined) continue;
+      const correct = (r.over === true || r.over === 'true' || r.over === 't' || r.over === 1 || r.over === '1');
       const actualOver = r.end_price > r.ptb;
-      const correct = !!r.over;
 
       if (correct && actualOver) tp++;
       else if (correct && !actualOver) tn++;
@@ -1919,20 +2021,22 @@
     skipStyle.textContent = '.agent-history-result.skip { color: rgba(168,184,176,0.45); font-size: 0.72rem; letter-spacing: 0.08em; } .agent-history-item.skip { opacity: 0.55; }';
     document.head.appendChild(skipStyle);
 
-    console.log('[AGENT] Initializing Vanguard Agent dashboard...');
+    // Access gate check
+    if (!isUnlocked()) {
+      showAccessGate();
+      return;
+    }
+    unlockUI();
+  }
+
+  function startAgent() {
     setStatus('connecting', 'CONNECTING...');
     setWsIndicator('reconnecting', 'CONNECTING');
     loadChartHistory();
     connectRTDS();
     refresh();
-
-    // Full refresh every 30 seconds (candles + TA + Polymarket)
     setInterval(refresh, 30000);
-
-    // History + track record poll every 15 seconds
     setInterval(refreshHistory, 15000);
-
-    // Countdown every second
     setInterval(updateCountdown, 1000);
     updateCountdown();
   }

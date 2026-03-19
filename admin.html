@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vanguard Admin — Access Codes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #05080c;
+      color: #e8f0ec;
+      font-family: 'Chakra Petch', sans-serif;
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    /* ── Login screen ── */
+    #loginScreen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .login-box {
+      background: linear-gradient(135deg, rgba(10,16,24,0.98), rgba(16,24,36,0.98));
+      border: 1px solid rgba(76,201,138,0.25);
+      border-radius: 12px;
+      padding: 48px 40px;
+      max-width: 380px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(76,201,138,0.07);
+    }
+
+    .login-box h1 {
+      font-size: 1.1rem;
+      letter-spacing: 0.15em;
+      color: #4cc98a;
+      margin-bottom: 8px;
+    }
+
+    .login-box p {
+      font-size: 0.78rem;
+      color: rgba(168,184,176,0.55);
+      margin-bottom: 28px;
+    }
+
+    /* ── Admin dashboard ── */
+    #adminDash { display: none; }
+
+    .topbar {
+      background: rgba(10,16,24,0.95);
+      border-bottom: 1px solid rgba(76,201,138,0.12);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .topbar-title {
+      font-size: 0.85rem;
+      letter-spacing: 0.12em;
+      color: #4cc98a;
+      font-weight: 700;
+    }
+
+    .topbar-logout {
+      background: none;
+      border: 1px solid rgba(201,76,76,0.3);
+      color: rgba(201,76,76,0.7);
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      border-radius: 5px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .topbar-logout:hover { background: rgba(201,76,76,0.1); color: #c94c4c; }
+
+    .dash-wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* ── Generate section ── */
+    .gen-section {
+      background: rgba(10,16,24,0.7);
+      border: 1px solid rgba(76,201,138,0.18);
+      border-radius: 10px;
+      padding: 28px;
+      margin-bottom: 28px;
+    }
+
+    .section-title {
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      color: rgba(76,201,138,0.7);
+      margin-bottom: 18px;
+      text-transform: uppercase;
+    }
+
+    .gen-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .qty-label {
+      font-size: 0.8rem;
+      color: rgba(168,184,176,0.6);
+      white-space: nowrap;
+    }
+
+    .qty-input {
+      width: 70px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(76,201,138,0.2);
+      border-radius: 6px;
+      padding: 9px 12px;
+      color: #e8f0ec;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      text-align: center;
+      outline: none;
+    }
+
+    .note-input {
+      flex: 1;
+      min-width: 160px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(76,201,138,0.2);
+      border-radius: 6px;
+      padding: 9px 14px;
+      color: #e8f0ec;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      outline: none;
+    }
+    .note-input::placeholder { color: rgba(168,184,176,0.3); }
+    .note-input:focus, .qty-input:focus { border-color: rgba(76,201,138,0.45); }
+
+    /* ── Buttons ── */
+    .btn-green {
+      background: linear-gradient(135deg, #4cc98a, #2ea870);
+      color: #05080c;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 22px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .btn-green:hover { opacity: 0.85; }
+    .btn-green:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: rgba(76,201,138,0.08);
+      border: 1px solid rgba(76,201,138,0.25);
+      color: #4cc98a;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      border-radius: 5px;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-ghost:hover { background: rgba(76,201,138,0.18); }
+
+    .btn-danger {
+      background: rgba(201,76,76,0.08);
+      border: 1px solid rgba(201,76,76,0.25);
+      color: #c94c4c;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      border-radius: 5px;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-danger:hover { background: rgba(201,76,76,0.18); }
+
+    /* ── Status bar ── */
+    .status-bar {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .stat-chip {
+      background: rgba(10,16,24,0.7);
+      border: 1px solid rgba(76,201,138,0.15);
+      border-radius: 8px;
+      padding: 14px 20px;
+      text-align: center;
+      min-width: 110px;
+    }
+
+    .stat-chip-val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #4cc98a;
+      display: block;
+    }
+
+    .stat-chip-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      color: rgba(168,184,176,0.5);
+      text-transform: uppercase;
+    }
+
+    /* ── Codes table ── */
+    .codes-section {
+      background: rgba(10,16,24,0.7);
+      border: 1px solid rgba(76,201,138,0.18);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .codes-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid rgba(76,201,138,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 6px;
+    }
+
+    .filter-tab {
+      background: none;
+      border: 1px solid rgba(76,201,138,0.15);
+      color: rgba(168,184,176,0.5);
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      border-radius: 5px;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-tab.active, .filter-tab:hover {
+      border-color: rgba(76,201,138,0.4);
+      color: #4cc98a;
+      background: rgba(76,201,138,0.07);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead tr {
+      background: rgba(76,201,138,0.05);
+    }
+
+    th {
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      color: rgba(76,201,138,0.55);
+      text-transform: uppercase;
+      padding: 12px 20px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    td {
+      padding: 12px 20px;
+      font-size: 0.8rem;
+      border-bottom: 1px solid rgba(76,201,138,0.06);
+      vertical-align: middle;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(76,201,138,0.03); }
+
+    .code-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #4cc98a;
+      letter-spacing: 0.05em;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      font-weight: 700;
+      border-radius: 4px;
+      padding: 3px 9px;
+    }
+    .badge-active   { background: rgba(76,201,138,0.12); color: #4cc98a; border: 1px solid rgba(76,201,138,0.25); }
+    .badge-claimed  { background: rgba(168,184,176,0.08); color: rgba(168,184,176,0.45); border: 1px solid rgba(168,184,176,0.15); }
+    .badge-revoked  { background: rgba(201,76,76,0.08); color: #c94c4c; border: 1px solid rgba(201,76,76,0.2); }
+
+    .note-cell { color: rgba(168,184,176,0.55); font-size: 0.75rem; }
+    .date-cell { color: rgba(168,184,176,0.4); font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; }
+
+    .copy-btn {
+      background: none;
+      border: 1px solid rgba(76,201,138,0.2);
+      color: rgba(76,201,138,0.6);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-left: 6px;
+    }
+    .copy-btn:hover { background: rgba(76,201,138,0.1); color: #4cc98a; }
+
+    .empty-row td {
+      text-align: center;
+      padding: 40px;
+      color: rgba(168,184,176,0.3);
+      font-size: 0.8rem;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      background: rgba(10,16,24,0.97);
+      border: 1px solid rgba(76,201,138,0.3);
+      color: #4cc98a;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      opacity: 0;
+      transform: translateY(12px);
+      transition: all 0.25s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.error { border-color: rgba(201,76,76,0.3); color: #c94c4c; }
+
+    /* ── Shared input/button styles ── */
+    input[type="password"], input[type="text"] {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(76,201,138,0.2);
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #e8f0ec;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: rgba(76,201,138,0.5); }
+    input::placeholder { color: rgba(168,184,176,0.3); }
+
+    .msg { font-size: 0.78rem; margin-top: 10px; min-height: 20px; }
+    .msg.error   { color: #c94c4c; }
+    .msg.success { color: #4cc98a; }
+    .msg.info    { color: rgba(168,184,176,0.6); }
+  </style>
+</head>
+<body>
+
+<!-- ── Login Screen ── -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>⚙ VANGUARD ADMIN</h1>
+    <p>Access code management panel</p>
+    <input type="password" id="adminPass" placeholder="Admin password" autocomplete="off" />
+    <div class="msg" id="loginMsg"></div>
+    <br/>
+    <button class="btn-green" id="loginBtn" style="width:100%">LOGIN</button>
+  </div>
+</div>
+
+<!-- ── Admin Dashboard ── -->
+<div id="adminDash">
+  <div class="topbar">
+    <span class="topbar-title">⚙ VANGUARD ADMIN — Access Code Manager</span>
+    <button class="topbar-logout" id="logoutBtn">LOGOUT</button>
+  </div>
+
+  <div class="dash-wrap">
+
+    <!-- Stats -->
+    <div class="status-bar" id="statsBar">
+      <div class="stat-chip">
+        <span class="stat-chip-val" id="statTotal">--</span>
+        <span class="stat-chip-label">Total Codes</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-chip-val" id="statActive" style="color:#4cc98a">--</span>
+        <span class="stat-chip-label">Active</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-chip-val" id="statClaimed" style="color:rgba(168,184,176,0.5)">--</span>
+        <span class="stat-chip-label">Claimed</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-chip-val" id="statRevoked" style="color:#c94c4c">--</span>
+        <span class="stat-chip-label">Revoked</span>
+      </div>
+    </div>
+
+    <!-- Generate -->
+    <div class="gen-section">
+      <div class="section-title">Generate New Codes</div>
+      <div class="gen-row">
+        <span class="qty-label">Quantity:</span>
+        <input type="number" class="qty-input" id="genQty" value="1" min="1" max="50" />
+        <input type="text" class="note-input" id="genNote" placeholder="Note (e.g. Discord username, member name)..." />
+        <button class="btn-green" id="genBtn">Generate</button>
+      </div>
+      <div class="msg" id="genMsg"></div>
+    </div>
+
+    <!-- Codes Table -->
+    <div class="codes-section">
+      <div class="codes-header">
+        <div class="filter-tabs">
+          <button class="filter-tab active" data-filter="all">All</button>
+          <button class="filter-tab" data-filter="active">Active</button>
+          <button class="filter-tab" data-filter="claimed">Claimed</button>
+          <button class="filter-tab" data-filter="revoked">Revoked</button>
+        </div>
+        <button class="btn-ghost" id="refreshBtn">↻ Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Status</th>
+              <th>Note</th>
+              <th>Created</th>
+              <th>Claimed At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="codesBody">
+            <tr class="empty-row"><td colspan="6">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Config ──
+  const SUPABASE_URL = 'https://zrvbmzjsivxlcodsdvrb.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpydmJtempzaXZ4bGNvZHNkdnJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NTkxNTYsImV4cCI6MjA4ODEzNTE1Nn0.gBu0RL9tHBCjYmkiupziTPAsVX3s8TovUdMhjWPjiLw';
+  const SB = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
+
+  // ── Change this password ──
+  const ADMIN_PASSWORD = 'vanguard2026';
+
+  let allCodes = [];
+  let currentFilter = 'all';
+
+  // ── Login ──
+  function checkLogin() {
+    return sessionStorage.getItem('vg_admin') === ADMIN_PASSWORD;
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  document.getElementById('adminPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+  function doLogin() {
+    const pass = document.getElementById('adminPass').value;
+    const msg  = document.getElementById('loginMsg');
+    if (pass === ADMIN_PASSWORD) {
+      sessionStorage.setItem('vg_admin', pass);
+      showDash();
+    } else {
+      msg.className = 'msg error';
+      msg.textContent = 'Incorrect password.';
+    }
+  }
+
+  function showDash() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminDash').style.display = 'block';
+    loadCodes();
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    sessionStorage.removeItem('vg_admin');
+    location.reload();
+  });
+
+  if (checkLogin()) showDash();
+
+  // ── Load codes ──
+  async function loadCodes() {
+    try {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/access_codes?select=*&order=created_at.desc&limit=500', { headers: SB });
+      if (!res.ok) throw new Error(res.status);
+      allCodes = await res.json();
+      updateStats();
+      renderTable();
+    } catch (e) {
+      showToast('Failed to load codes: ' + e.message, true);
+    }
+  }
+
+  function updateStats() {
+    const active  = allCodes.filter(c => !c.claimed && !c.revoked).length;
+    const claimed = allCodes.filter(c => c.claimed).length;
+    const revoked = allCodes.filter(c => c.revoked).length;
+    document.getElementById('statTotal').textContent   = allCodes.length;
+    document.getElementById('statActive').textContent  = active;
+    document.getElementById('statClaimed').textContent = claimed;
+    document.getElementById('statRevoked').textContent = revoked;
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('codesBody');
+    let filtered = allCodes;
+    if (currentFilter === 'active')  filtered = allCodes.filter(c => !c.claimed && !c.revoked);
+    if (currentFilter === 'claimed') filtered = allCodes.filter(c => c.claimed);
+    if (currentFilter === 'revoked') filtered = allCodes.filter(c => c.revoked);
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No codes found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(c => {
+      const status = c.revoked ? 'revoked' : c.claimed ? 'claimed' : 'active';
+      const badge  = c.revoked
+        ? '<span class="badge badge-revoked">REVOKED</span>'
+        : c.claimed
+          ? '<span class="badge badge-claimed">CLAIMED</span>'
+          : '<span class="badge badge-active">ACTIVE</span>';
+
+      const created   = c.created_at  ? new Date(c.created_at).toLocaleString()  : '--';
+      const claimedAt = c.claimed_at  ? new Date(c.claimed_at).toLocaleString()  : '--';
+      const note      = c.note || '<span style="opacity:0.3">--</span>';
+
+      const actions = status === 'active'
+        ? `<button class="btn-danger" onclick="revokeCode('${c.code}')">Revoke</button>`
+        : status === 'revoked'
+          ? `<button class="btn-ghost" onclick="reinstateCode('${c.code}')" style="font-size:0.7rem;padding:5px 10px;">Reinstate</button>`
+          : '';
+
+      return `<tr>
+        <td>
+          <span class="code-val">${c.code}</span>
+          <button class="copy-btn" onclick="copyCode('${c.code}')">⧉</button>
+        </td>
+        <td>${badge}</td>
+        <td class="note-cell">${note}</td>
+        <td class="date-cell">${created}</td>
+        <td class="date-cell">${claimedAt}</td>
+        <td>${actions}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Generate codes ──
+  function generateRandomCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const seg = n => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    return 'VG-' + seg(4) + '-' + seg(4);
+  }
+
+  document.getElementById('genBtn').addEventListener('click', async () => {
+    const qty  = parseInt(document.getElementById('genQty').value) || 1;
+    const note = document.getElementById('genNote').value.trim();
+    const btn  = document.getElementById('genBtn');
+    const msg  = document.getElementById('genMsg');
+
+    if (qty < 1 || qty > 50) {
+      msg.className = 'msg error'; msg.textContent = 'Quantity must be between 1 and 50.'; return;
+    }
+
+    btn.disabled = true;
+    msg.className = 'msg info'; msg.textContent = `Generating ${qty} code(s)...`;
+
+    const rows = Array.from({ length: qty }, () => ({
+      code: generateRandomCode(),
+      claimed: false,
+      note: note || null,
+    }));
+
+    try {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/access_codes', {
+        method: 'POST',
+        headers: { ...SB, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(rows),
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      msg.className = 'msg success';
+      msg.textContent = `✓ ${qty} code(s) generated successfully.`;
+      document.getElementById('genNote').value = '';
+      await loadCodes();
+      showToast(`Generated ${qty} code(s)`);
+    } catch (e) {
+      msg.className = 'msg error';
+      msg.textContent = 'Error: ' + e.message;
+    }
+    btn.disabled = false;
+  });
+
+  // ── Revoke code ──
+  async function revokeCode(code) {
+    if (!confirm(`Revoke code ${code}?\nThis will prevent it from being used.`)) return;
+    try {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/access_codes?code=eq.' + encodeURIComponent(code), {
+        method: 'PATCH',
+        headers: { ...SB, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ revoked: true }),
+      });
+      if (!res.ok) throw new Error(res.status);
+      showToast('Code revoked: ' + code);
+      await loadCodes();
+    } catch (e) { showToast('Failed to revoke: ' + e.message, true); }
+  }
+
+  // ── Reinstate code ──
+  async function reinstateCode(code) {
+    if (!confirm(`Reinstate code ${code}?\nThis will make it active again.`)) return;
+    try {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/access_codes?code=eq.' + encodeURIComponent(code), {
+        method: 'PATCH',
+        headers: { ...SB, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ revoked: false, claimed: false, claimed_at: null }),
+      });
+      if (!res.ok) throw new Error(res.status);
+      showToast('Code reinstated: ' + code);
+      await loadCodes();
+    } catch (e) { showToast('Failed to reinstate: ' + e.message, true); }
+  }
+
+  // ── Copy code ──
+  function copyCode(code) {
+    navigator.clipboard.writeText(code).then(() => showToast('Copied: ' + code));
+  }
+
+  // ── Filter tabs ──
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentFilter = tab.dataset.filter;
+      renderTable();
+    });
+  });
+
+  document.getElementById('refreshBtn').addEventListener('click', loadCodes);
+
+  // ── Toast ──
+  let toastTimer;
+  function showToast(msg, isError = false) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show' + (isError ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  // ── Add revoked column if missing (Supabase migration) ──
+  // Run this SQL in Supabase if revoke doesn't work:
+  // ALTER TABLE access_codes ADD COLUMN IF NOT EXISTS revoked boolean default false;
+  // ALTER TABLE access_codes ADD COLUMN IF NOT EXISTS note text;
+</script>
+</body>
+</html>
