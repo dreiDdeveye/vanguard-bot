@@ -16,55 +16,156 @@
   };
 
   // ═══════════════════════════════════════════
-  // ACCESS GATE — Admin issues codes manually
+  // ACCESS GATE — Request → Admin approves → Code appears
   // ═══════════════════════════════════════════
 
-  const ACCESS_LS_KEY = 'vg_access_code';
+  const ACCESS_LS_KEY    = 'vg_access_code';
+  const SESSION_LS_KEY   = 'vg_req_session';
+  let   pollTimer        = null;
 
   function isUnlocked() {
     try { return !!localStorage.getItem(ACCESS_LS_KEY); } catch(e) { return false; }
   }
 
+  // Validate stored code against Supabase
+  // Returns: 'valid' | 'revoked' | 'deleted'
+  async function getCodeStatus() {
+    let code;
+    try { code = localStorage.getItem(ACCESS_LS_KEY); } catch(e) { return 'deleted'; }
+    if (!code) return 'deleted';
+    try {
+      // Check if code exists at all (no revoked filter)
+      const res = await fetch(
+        SUPABASE_URL + '/rest/v1/access_codes?code=eq.' + encodeURIComponent(code) + '&select=revoked',
+        { headers: SB_HEADERS }
+      );
+      if (!res.ok) return 'valid'; // network error — stay unlocked
+      const data = await res.json();
+      if (!data || data.length === 0) {
+        // Code truly deleted — clear localStorage
+        try { localStorage.removeItem(ACCESS_LS_KEY); } catch(e) {}
+        return 'deleted';
+      }
+      if (data[0].revoked === true) return 'revoked';
+      return 'valid';
+    } catch(e) { return 'valid'; }
+  }
+
+  async function validateStoredCode() {
+    const status = await getCodeStatus();
+    return status === 'valid';
+  }
+
+  // Generate a unique session ID for this browser
+  function getOrCreateSession() {
+    let sid;
+    try { sid = localStorage.getItem(SESSION_LS_KEY); } catch(e) {}
+    if (!sid) {
+      sid = 'REQ-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+      try { localStorage.setItem(SESSION_LS_KEY, sid); } catch(e) {}
+    }
+    return sid;
+  }
+
+  // Submit a request to Supabase
+  async function submitRequest(note) {
+    const sid = getOrCreateSession();
+    const row = { session_id: sid, status: 'pending', note: note || null };
+    try {
+      // Upsert — if session already requested, update the note
+      const res = await fetch(SUPABASE_URL + '/rest/v1/code_requests', {
+        method: 'POST',
+        headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify(row),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return sid;
+    } catch(e) {
+      console.error('[AGENT] Request error:', e);
+      throw e;
+    }
+  }
+
+  // Poll Supabase every 5s to check if admin fulfilled the request
+  function startPolling(sid) {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(async function() {
+      try {
+        const res = await fetch(
+          SUPABASE_URL + '/rest/v1/code_requests?session_id=eq.' + encodeURIComponent(sid) + '&select=status,code',
+          { headers: SB_HEADERS }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || data.length === 0) return;
+        const req = data[0];
+
+        if (req.status === 'fulfilled' && req.code) {
+          clearInterval(pollTimer);
+          showReceivedCode(req.code);
+        }
+      } catch(e) { /* retry next tick */ }
+    }, 5000);
+  }
+
+  // Show the code that admin generated — user can copy & paste
+  function showReceivedCode(code) {
+    const reqView   = document.getElementById('agentReqView');
+    const codeView  = document.getElementById('agentCodeReceivedView');
+    const codeEl    = document.getElementById('agentReceivedCode');
+    const inputEl   = document.getElementById('agentCodeInput');
+    if (reqView)  reqView.style.display  = 'none';
+    if (codeView) codeView.style.display = 'block';
+    if (codeEl)   codeEl.textContent = code;
+    // Auto-fill the unlock input
+    if (inputEl)  inputEl.value = code;
+    setAccessMsg('success', 'Your code is ready! Click Unlock to continue.');
+  }
+
+  // Claim and unlock
   async function claimCode(code) {
     const unlockBtn = document.getElementById('agentUnlockBtn');
     if (!code || code.trim() === '') { setAccessMsg('error', 'Please enter your access code.'); return; }
-
     unlockBtn.disabled = true;
     setAccessMsg('info', 'Verifying...');
-
     try {
-      // Check code exists and is unclaimed
       const res = await fetch(
         SUPABASE_URL + '/rest/v1/access_codes?code=eq.' + encodeURIComponent(code.trim().toUpperCase()) + '&claimed=eq.false',
         { headers: SB_HEADERS }
       );
       if (!res.ok) throw new Error('Fetch failed');
       const data = await res.json();
-
       if (!data || data.length === 0) {
-        setAccessMsg('error', 'Invalid or already used code. Contact admin for a new one.');
+        setAccessMsg('error', 'Invalid or already used code. Request a new one below.');
         unlockBtn.disabled = false;
+        // Clear old session so they can request again
+        try { localStorage.removeItem(SESSION_LS_KEY); } catch(e) {}
+        clearInterval(pollTimer);
+        // Show request form again
+        const reqView  = document.getElementById('agentReqView');
+        const waitView = document.getElementById('agentWaitView');
+        const codeView = document.getElementById('agentCodeReceivedView');
+        const reqBtn   = document.getElementById('agentReqBtn');
+        if (reqView)  reqView.style.display  = 'block';
+        if (waitView) waitView.style.display = 'none';
+        if (codeView) codeView.style.display = 'none';
+        if (reqBtn)   { reqBtn.disabled = false; reqBtn.textContent = 'Request Access'; }
         return;
       }
-
-      // Claim it
-      const claimRes = await fetch(
+      // Mark claimed
+      await fetch(
         SUPABASE_URL + '/rest/v1/access_codes?code=eq.' + encodeURIComponent(code.trim().toUpperCase()),
-        {
-          method: 'PATCH',
-          headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ claimed: true, claimed_at: new Date().toISOString() }),
-        }
+        { method: 'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ claimed: true, claimed_at: new Date().toISOString() }) }
       );
-      if (!claimRes.ok) throw new Error('Claim failed');
-
       try { localStorage.setItem(ACCESS_LS_KEY, code.trim().toUpperCase()); } catch(e) {}
+      // Clean up request session
+      try { localStorage.removeItem(SESSION_LS_KEY); } catch(e) {}
       setAccessMsg('success', 'Access granted! Loading...');
+      clearInterval(pollTimer);
       setTimeout(unlockUI, 700);
-
     } catch (e) {
       setAccessMsg('error', 'Error verifying code. Try again.');
-      console.error('[AGENT] Claim code error:', e);
       unlockBtn.disabled = false;
     }
   }
@@ -90,16 +191,89 @@
     if (gate) gate.classList.add('visible');
     if (wrap) wrap.classList.add('locked');
 
+    const reqBtn    = document.getElementById('agentReqBtn');
     const unlockBtn = document.getElementById('agentUnlockBtn');
-    const input = document.getElementById('agentCodeInput');
+    const input     = document.getElementById('agentCodeInput');
+    const noteInput = document.getElementById('agentReqNote');
+    const copyBtn   = document.getElementById('agentCopyReceivedBtn');
 
+    // Request button
+    if (reqBtn) reqBtn.addEventListener('click', async function() {
+      const note = noteInput ? noteInput.value.trim() : '';
+
+      if (!note) {
+        setAccessMsg('error', 'Please enter your name or Discord username.');
+        return;
+      }
+
+      reqBtn.disabled = true;
+      reqBtn.textContent = 'Checking...';
+      setAccessMsg('info', 'Checking username...');
+
+      // Check if username already exists in requests
+      try {
+        const checkRes = await fetch(
+          SUPABASE_URL + '/rest/v1/code_requests?note=eq.' + encodeURIComponent(note) + '&select=id,status',
+          { headers: SB_HEADERS }
+        );
+        if (checkRes.ok) {
+          const existing = await checkRes.json();
+          if (existing && existing.length > 0) {
+            setAccessMsg('error', 'Username "' + note + '" is already taken. Please use a different name.');
+            reqBtn.disabled = false;
+            reqBtn.textContent = 'Request Access';
+            if (noteInput) { noteInput.focus(); noteInput.select(); }
+            return;
+          }
+        }
+      } catch(e) { /* continue if check fails */ }
+
+      reqBtn.textContent = 'Sending...';
+      setAccessMsg('info', 'Sending request...');
+      try {
+        const sid = await submitRequest(note);
+        document.getElementById('agentReqView').style.display = 'none';
+        document.getElementById('agentWaitView').style.display = 'block';
+        setAccessMsg('info', 'Request sent! Waiting for admin to approve...');
+        startPolling(sid);
+      } catch(e) {
+        setAccessMsg('error', 'Failed to send request. Try again.');
+        reqBtn.disabled = false;
+        reqBtn.textContent = 'Request Access';
+      }
+    });
+
+    // Unlock button
     if (unlockBtn) unlockBtn.addEventListener('click', function() {
       claimCode(input ? input.value : '');
     });
     if (input) input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') claimCode(input.value);
     });
+
+    // Copy received code
+    if (copyBtn) copyBtn.addEventListener('click', function() {
+      const codeEl = document.getElementById('agentReceivedCode');
+      if (codeEl && codeEl.textContent) {
+        navigator.clipboard.writeText(codeEl.textContent).then(function() {
+          copyBtn.textContent = '✓ Copied';
+          setTimeout(function() { copyBtn.textContent = 'Copy Code'; }, 1500);
+        });
+      }
+    });
+
+    // Check if there's a pending session already
+    let existingSid;
+    try { existingSid = localStorage.getItem(SESSION_LS_KEY); } catch(e) {}
+    if (existingSid) {
+      // Resume polling — might already be fulfilled
+      document.getElementById('agentReqView').style.display = 'none';
+      document.getElementById('agentWaitView').style.display = 'block';
+      setAccessMsg('info', 'Waiting for admin approval...');
+      startPolling(existingSid);
+    }
   }
+
   const state = {
     btcPrice: null,
     priceSource: null,
@@ -2021,12 +2195,64 @@
     skipStyle.textContent = '.agent-history-result.skip { color: rgba(168,184,176,0.45); font-size: 0.72rem; letter-spacing: 0.08em; } .agent-history-item.skip { opacity: 0.55; }';
     document.head.appendChild(skipStyle);
 
-    // Access gate check
+    // Validate access — check Supabase so deleted/revoked codes get blocked
     if (!isUnlocked()) {
       showAccessGate();
       return;
     }
-    unlockUI();
+
+    // Has a code in localStorage — verify it's still valid
+    getCodeStatus().then(function(status) {
+      if (status === 'valid') {
+        unlockUI();
+      } else {
+        // Deleted or revoked
+        if (status === 'deleted') {
+          showAccessGate();
+          setAccessMsg('error', 'Your access code is no longer valid. Please request a new one.');
+        } else {
+          showAccessGate();
+          // Show revoked view immediately
+          const reqView  = document.getElementById('agentReqView');
+          const revView  = document.getElementById('agentRevokedView');
+          const unlockSec = document.querySelector('.agent-access-enter');
+          if (reqView)  reqView.style.display  = 'none';
+          if (unlockSec) unlockSec.style.display = 'none';
+          if (revView)  revView.style.display  = 'block';
+          setAccessMsg('error', '🚫 Your access has been revoked. Contact the admin.');
+          const pingBtn = document.getElementById('agentPingBtn');
+          if (pingBtn) pingBtn.addEventListener('click', pingAdmin);
+        }
+      }
+    });
+  }
+
+  // ── Send ping to admin ──
+  async function pingAdmin() {
+    let code;
+    try { code = localStorage.getItem(ACCESS_LS_KEY); } catch(e) {}
+    if (!code) return;
+    const pingBtn = document.getElementById('agentPingBtn');
+    if (pingBtn) { pingBtn.disabled = true; pingBtn.textContent = 'Pinging...'; }
+    try {
+      const res = await fetch(
+        SUPABASE_URL + '/rest/v1/access_codes?code=eq.' + encodeURIComponent(code),
+        {
+          method: 'PATCH',
+          headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ pinged: true, pinged_at: new Date().toISOString() }),
+        }
+      );
+      if (!res.ok) throw new Error(res.status);
+      if (pingBtn) {
+        pingBtn.textContent = '✓ Admin Pinged!';
+        pingBtn.style.borderColor = 'rgba(76,201,138,0.4)';
+        pingBtn.style.color = '#4cc98a';
+      }
+    } catch(e) {
+      console.error('[AGENT] Ping failed:', e);
+      if (pingBtn) { pingBtn.disabled = false; pingBtn.textContent = '🔔 Ping Admin'; }
+    }
   }
 
   function startAgent() {
@@ -2039,6 +2265,68 @@
     setInterval(refreshHistory, 15000);
     setInterval(updateCountdown, 1000);
     updateCountdown();
+
+    // ── Realtime access check every 10 seconds ──
+    let isRevoked = false;
+    setInterval(async function() {
+      const status = await getCodeStatus();
+
+      if (status !== 'valid' && !isRevoked) {
+        // Just got revoked or deleted — lock everything
+        isRevoked = true;
+        if (rtdsWs) { try { rtdsWs.close(); } catch(e) {} rtdsWs = null; }
+        clearInterval(pollTimer);
+
+        const wrap = document.getElementById('agentContentWrap');
+        const gate = document.getElementById('agentAccessGate');
+        if (wrap) wrap.classList.add('locked');
+        if (gate) gate.classList.add('visible');
+
+        const reqView       = document.getElementById('agentReqView');
+        const waitView      = document.getElementById('agentWaitView');
+        const codeView      = document.getElementById('agentCodeReceivedView');
+        const unlockSection = document.querySelector('.agent-access-enter');
+        if (reqView)        reqView.style.display        = 'none';
+        if (waitView)       waitView.style.display       = 'none';
+        if (codeView)       codeView.style.display       = 'none';
+        if (unlockSection)  unlockSection.style.display  = 'none';
+
+        const revokedView = document.getElementById('agentRevokedView');
+        if (revokedView) revokedView.style.display = 'block';
+        setAccessMsg('error', '🚫 Your access has been revoked by the admin.');
+
+        // Wire ping button
+        const pingBtn = document.getElementById('agentPingBtn');
+        if (pingBtn) {
+          pingBtn.replaceWith(pingBtn.cloneNode(true)); // remove old listeners
+          document.getElementById('agentPingBtn').addEventListener('click', pingAdmin);
+        }
+
+        console.log('[AGENT] Access revoked — section locked.');
+
+      } else if (status === 'valid' && isRevoked) {
+        // Admin reinstated — auto-unlock without re-entering code
+        isRevoked = false;
+        console.log('[AGENT] Access reinstated — auto-unlocking.');
+
+        const wrap = document.getElementById('agentContentWrap');
+        const gate = document.getElementById('agentAccessGate');
+        if (wrap) wrap.classList.remove('locked');
+        if (gate) gate.classList.remove('visible');
+
+        // Reset gate views
+        const revokedView   = document.getElementById('agentRevokedView');
+        const reqView       = document.getElementById('agentReqView');
+        const unlockSection = document.querySelector('.agent-access-enter');
+        if (revokedView)    revokedView.style.display   = 'none';
+        if (reqView)        reqView.style.display       = 'block';
+        if (unlockSection)  unlockSection.style.display = 'flex';
+
+        // Restart feeds
+        connectRTDS();
+        refresh();
+      }
+    }, 10000);
   }
 
   // Start when DOM is ready

@@ -209,6 +209,72 @@
     .agent-access-msg.error { color: #c94c4c; }
     .agent-access-msg.success { color: #4cc98a; }
     .agent-access-msg.info { color: rgba(168,184,176,0.7); }
+
+    .agent-access-divider {
+      font-size: 0.7rem;
+      color: rgba(168,184,176,0.35);
+      text-align: center;
+      margin: 16px 0 12px;
+      letter-spacing: 0.06em;
+    }
+
+    .agent-access-waiting {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(76,201,138,0.06);
+      border: 1px solid rgba(76,201,138,0.15);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      font-size: 0.8rem;
+      color: rgba(168,184,176,0.7);
+    }
+
+    .agent-wait-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(76,201,138,0.2);
+      border-top-color: #4cc98a;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .agent-code-received-label {
+      font-size: 0.82rem;
+      color: #4cc98a;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .agent-code-received-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(76,201,138,0.07);
+      border: 1px solid rgba(76,201,138,0.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+    }
+
+    .agent-access-copy-btn {
+      background: rgba(76,201,138,0.12);
+      border: 1px solid rgba(76,201,138,0.3);
+      color: #4cc98a;
+      font-family: 'Chakra Petch', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      border-radius: 5px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .agent-access-copy-btn:hover { background: rgba(76,201,138,0.22); }
   </style>
 </head>
 <body>
@@ -585,11 +651,53 @@
     <!-- ── Access Gate Overlay ── -->
     <div class="agent-access-gate" id="agentAccessGate">
       <div class="agent-access-inner">
-        <div class="agent-access-icon">🔒</div>
+        <div class="agent-access-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4cc98a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
         <h3 class="agent-access-title">RESTRICTED ACCESS</h3>
-        <p class="agent-access-desc">Enter your access code to unlock the Vanguard Agent. Codes are issued by the admin. Each code works on one browser only.</p>
+        <p class="agent-access-desc">Request access below. The admin will review and send you a one-time code.</p>
+
+        <!-- Revoked state — ping button only, no request form -->
+        <div id="agentRevokedView" style="display:none;">
+          <div class="agent-access-waiting" style="border-color:rgba(201,76,76,0.2);background:rgba(201,76,76,0.05);margin-bottom:14px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c94c4c" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style="color:rgba(201,76,76,0.8);">Access revoked — contact the admin to restore access.</span>
+          </div>
+          <button class="agent-access-gen-btn" id="agentPingBtn" style="background:rgba(201,168,76,0.15);color:#c9a84c;border:1px solid rgba(201,168,76,0.3);width:100%;">
+            🔔 Ping Admin
+          </button>
+        </div>
+
+        <!-- Step 1: Request form -->
+        <div id="agentReqView">
+          <input type="text" class="agent-access-input" id="agentReqNote" placeholder="Your name or Discord username..." autocomplete="off" style="margin-bottom:10px;" />
+          <button class="agent-access-gen-btn" id="agentReqBtn">Request Access</button>
+          <div class="agent-access-divider">— or enter a code you already have —</div>
+        </div>
+
+        <!-- Step 2: Waiting for admin -->
+        <div id="agentWaitView" style="display:none;">
+          <div class="agent-access-waiting">
+            <div class="agent-wait-spinner"></div>
+            <span>Request sent — waiting for admin approval...</span>
+          </div>
+        </div>
+
+        <!-- Step 3: Code received -->
+        <div id="agentCodeReceivedView" style="display:none;">
+          <div class="agent-code-received-label">✅ Your code is ready!</div>
+          <div class="agent-code-received-row">
+            <span class="agent-access-code-value" id="agentReceivedCode"></span>
+            <button class="agent-access-copy-btn" id="agentCopyReceivedBtn">Copy Code</button>
+          </div>
+        </div>
+
+        <!-- Always visible: unlock input -->
         <div class="agent-access-enter">
-          <input type="text" class="agent-access-input" id="agentCodeInput" placeholder="Enter your access code..." autocomplete="off" spellcheck="false" />
+          <input type="text" class="agent-access-input" id="agentCodeInput" placeholder="Paste your access code here..." autocomplete="off" spellcheck="false" />
           <button class="agent-access-unlock-btn" id="agentUnlockBtn">Unlock</button>
         </div>
         <div class="agent-access-msg" id="agentAccessMsg"></div>
