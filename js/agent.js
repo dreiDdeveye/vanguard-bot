@@ -1172,109 +1172,359 @@
   }
 
   // ═══════════════════════════════════════════
-  // ═══════════════════════════════════════════
   // SMART FINAL PREDICTION ENGINE
-  // Deep candle history analysis — fires 1:30 into window (3:30 left)
+  // ═══════════════════════════════════════════
+
+  // ═══════════════════════════════════════════
+  // VANGUARD SNIPER ENGINE
+  // High-probability setups only — fires 1:30 into window
+  // Output: LONG / SHORT / NO TRADE
   // ═══════════════════════════════════════════
 
   function analyzeFinalPrediction(candles) {
     if (!els.finalPred) return;
 
-    const signals = [];
-    let bullScore = 0;
-    let bearScore = 0;
     const ta    = state.ta;
     const price = state.btcPrice;
     const ptb   = state.priceToBeat;
 
+    // ── Require minimum data ──
+    if (!price || !candles || candles.length < 20) {
+      showNoTrade('NO DATA', 'Insufficient data for analysis.');
+      return;
+    }
+
+    const signals   = [];
+    const warnings  = [];
+    let bullScore   = 0;
+    let bearScore   = 0;
+    let noTradeScore = 0;  // accumulates reasons to skip
+
+    const last    = candles.length - 1;
+    const curr    = candles[last];
+    const prev    = candles[last - 1];
+    const currBull = curr.close > curr.open;
+    const prevBull = prev.close > prev.open;
+    const currRange = (curr.high - curr.low) || 1;
+    const prevRange = (prev.high - prev.low) || 1;
+
     // ═══════════════════════════════════════════════════════════════
-    // SECTION A — DEEP CANDLE HISTORY (analyzes last 20 candles)
+    // STEP 1 — MARKET CONDITION FILTER
+    // Classify environment before anything else
     // ═══════════════════════════════════════════════════════════════
 
-    if (candles && candles.length >= 20) {
-      const len  = candles.length;
-      const last = len - 1;
-      const curr = candles[last];
-      const prev = candles[last - 1];
+    // Volatility: ATR-like measure using last 5 candle ranges
+    const ranges5   = candles.slice(-5).map(c => c.high - c.low);
+    const avgRange5 = ranges5.reduce((a, b) => a + b, 0) / 5;
+    const ranges20  = candles.slice(-20).map(c => c.high - c.low);
+    const avgRange20 = ranges20.reduce((a, b) => a + b, 0) / 20;
+    const volRatioEnv = avgRange5 / (avgRange20 || 1);
 
-      // ─── A1. TREND STRENGTH — slope over last 10 & 20 candles ───────────
-      const closes10 = candles.slice(-10).map(c => c.close);
-      const closes20 = candles.slice(-20).map(c => c.close);
-      const slope10  = (closes10[9] - closes10[0]) / closes10[0] * 100;
-      const slope20  = (closes20[19] - closes20[0]) / closes20[0] * 100;
+    // Trend: slope of closes over 10 and 20 candles
+    const c10 = candles.slice(-10).map(c => c.close);
+    const c20 = candles.slice(-20).map(c => c.close);
+    const slope10 = (c10[9] - c10[0]) / c10[0] * 100;
+    const slope20 = (c20[19] - c20[0]) / c20[0] * 100;
+    const trendStrength = Math.abs(slope10);
 
-      if (slope10 > 0.05 && slope20 > 0.02)       { bullScore += 1.5; signals.push('TREND↑ ' + slope10.toFixed(3) + '%'); }
-      else if (slope10 < -0.05 && slope20 < -0.02) { bearScore += 1.5; signals.push('TREND↓ ' + slope10.toFixed(3) + '%'); }
-      else if (slope10 > 0.03)                     { bullScore += 0.5; signals.push('WEAK TREND↑'); }
-      else if (slope10 < -0.03)                    { bearScore += 0.5; signals.push('WEAK TREND↓'); }
+    // Choppiness: how often closes flip direction
+    let dirFlips = 0;
+    for (let i = last - 8; i <= last - 1; i++) {
+      const b1 = candles[i].close > candles[i].open;
+      const b2 = candles[i+1].close > candles[i+1].open;
+      if (b1 !== b2) dirFlips++;
+    }
+    const choppy = dirFlips >= 5; // flips 5+ of 8 transitions = ranging/choppy
 
-      // Both timeframes agree = stronger signal
-      if (Math.sign(slope10) === Math.sign(slope20) && Math.abs(slope10) > 0.02) {
-        if (slope10 > 0) bullScore += 0.5; else bearScore += 0.5;
-        signals.push('TREND ALIGNED');
+    // Volume: 5c vs 20c
+    const avgVol5  = candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+    const avgVol20 = candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+    const volEnvRatio = avgVol5 / (avgVol20 || 1);
+
+    // Classify
+    let marketCondition;
+    if (volEnvRatio < 0.5 || avgVol5 < avgVol20 * 0.5) {
+      marketCondition = 'LOW LIQUIDITY';
+    } else if (volRatioEnv > 2.5 || currRange > avgRange20 * 2.5) {
+      marketCondition = 'HIGH VOLATILITY';
+    } else if (choppy || trendStrength < 0.02) {
+      marketCondition = 'RANGING';
+    } else {
+      marketCondition = 'TRENDING';
+    }
+
+    signals.push('ENV:' + marketCondition);
+
+    // Apply market condition rules
+    if (marketCondition === 'LOW LIQUIDITY') {
+      noTradeScore += 6;
+      warnings.push('Low liquidity — no trade rule');
+    }
+    if (marketCondition === 'HIGH VOLATILITY') {
+      noTradeScore += 3;
+      warnings.push('High volatility — need breakout confirm');
+    }
+    if (marketCondition === 'RANGING') {
+      noTradeScore += 2;
+      warnings.push('Ranging/choppy — low edge');
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 2 — MARKET STRUCTURE
+    // ═══════════════════════════════════════════════════════════════
+
+    // Break of Structure (BOS) — is the current candle breaking a recent swing?
+    const swing5High = Math.max(...candles.slice(-6, -1).map(c => c.high));
+    const swing5Low  = Math.min(...candles.slice(-6, -1).map(c => c.low));
+    const bosUp   = curr.close > swing5High;  // bullish BOS
+    const bosDown = curr.close < swing5Low;   // bearish BOS
+
+    if (bosUp)   { bullScore += 2.5; signals.push('BOS↑'); }
+    if (bosDown) { bearScore += 2.5; signals.push('BOS↓'); }
+
+    // Higher highs / lower lows over last 6 candles
+    const s = candles.slice(-6);
+    const hh = s[5].high > s[4].high && s[4].high > s[3].high;
+    const hl = s[5].low  > s[4].low  && s[4].low  > s[3].low;
+    const lh = s[5].high < s[4].high && s[4].high < s[3].high;
+    const ll = s[5].low  < s[4].low  && s[4].low  < s[3].low;
+
+    if (hh && hl)      { bullScore += 2;   signals.push('HH/HL'); }
+    else if (lh && ll) { bearScore += 2;   signals.push('LH/LL'); }
+    else if (hh || hl) { bullScore += 0.5; }
+    else if (lh || ll) { bearScore += 0.5; }
+    else               { noTradeScore += 1; warnings.push('No clear structure'); }
+
+    // Trend slope agreement
+    if (Math.sign(slope10) === Math.sign(slope20)) {
+      if (slope10 > 0.03)  { bullScore += 1.5; signals.push('TREND↑ ALIGNED'); }
+      if (slope10 < -0.03) { bearScore += 1.5; signals.push('TREND↓ ALIGNED'); }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 3 — KEY LEVELS & LIQUIDITY ZONES
+    // ═══════════════════════════════════════════════════════════════
+
+    const h20 = Math.max(...candles.slice(-20).map(c => c.high));
+    const l20 = Math.min(...candles.slice(-20).map(c => c.low));
+    const m20 = (h20 + l20) / 2;
+
+    // Equal highs/lows = liquidity zones (stop hunts likely here)
+    const highs = candles.slice(-20).map(c => c.high);
+    const lows  = candles.slice(-20).map(c => c.low);
+    const equalHighs = highs.filter(h => Math.abs(h - h20) / h20 < 0.001).length >= 3;
+    const equalLows  = lows.filter(l => Math.abs(l - l20) / l20 < 0.001).length >= 3;
+
+    if (equalHighs && price > h20 * 0.999) { bearScore += 1.5; signals.push('EQUAL HIGHS LIQZONE'); }
+    if (equalLows  && price < l20 * 1.001) { bullScore += 1.5; signals.push('EQUAL LOWS LIQZONE'); }
+
+    // Previous highs/lows as S/R
+    if (price > h20 * 1.001) { bullScore += 2; signals.push('20C BREAKOUT↑'); }
+    if (price < l20 * 0.999) { bearScore += 2; signals.push('20C BREAKDOWN↓'); }
+    if ((h20 - price) / price * 100 < 0.05 && price <= h20) { bearScore += 1.5; signals.push('AT 20C RESIST'); }
+    if ((price - l20) / price * 100 < 0.05 && price >= l20) { bullScore += 1.5; signals.push('AT 20C SUPPORT'); }
+    if (price > m20) { bullScore += 0.5; } else { bearScore += 0.5; }
+
+    // PTB as critical level
+    if (ptb) {
+      const diff = price - ptb;
+      const pct  = (diff / ptb) * 100;
+      if (Math.abs(pct) > 0.1) {
+        if (diff > 0) { bullScore += 5; signals.push('PTB +' + pct.toFixed(3) + '% SAFE'); }
+        else          { bearScore += 5; signals.push('PTB ' + pct.toFixed(3) + '% SAFE'); }
+      } else if (Math.abs(pct) > 0.03) {
+        if (diff > 0) { bullScore += 3; signals.push('PTB +' + pct.toFixed(3) + '%'); }
+        else          { bearScore += 3; signals.push('PTB ' + pct.toFixed(3) + '%'); }
+      } else if (Math.abs(pct) > 0.01) {
+        if (diff > 0) { bullScore += 1; signals.push('PTB +' + pct.toFixed(3) + '% THIN'); }
+        else          { bearScore += 1; signals.push('PTB ' + pct.toFixed(3) + '% THIN'); }
+      } else {
+        noTradeScore += 2;
+        warnings.push('Price at PTB — coin flip zone');
+        signals.push('PTB FLAT');
       }
+    }
 
-      // ─── A2. MARKET STRUCTURE — HH/HL or LH/LL ──────────────────────────
-      const s = candles.slice(-6);
-      const hh = s[5].high > s[4].high && s[4].high > s[3].high;
-      const hl = s[5].low  > s[4].low  && s[4].low  > s[3].low;
-      const lh = s[5].high < s[4].high && s[4].high < s[3].high;
-      const ll = s[5].low  < s[4].low  && s[4].low  < s[3].low;
-      if (hh && hl)      { bullScore += 2; signals.push('HH/HL UPTREND'); }
-      else if (lh && ll) { bearScore += 2; signals.push('LH/LL DOWNTREND'); }
-      else if (hh)       { bullScore += 0.5; signals.push('HH BIAS'); }
-      else if (ll)       { bearScore += 0.5; signals.push('LL BIAS'); }
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 4 — SMART MONEY CONCEPTS
+    // ═══════════════════════════════════════════════════════════════
 
-      // ─── A3. CANDLESTICK PATTERNS ────────────────────────────────────────
-      const prevBull  = prev.close > prev.open;
-      const currBull  = curr.close > curr.open;
-      const prevBody  = Math.abs(prev.close - prev.open);
-      const currBody  = Math.abs(curr.close - curr.open);
-      const currRange = (curr.high - curr.low) || 1;
-      const prevRange = (prev.high - prev.low) || 1;
+    // Liquidity grab (stop hunt): price spike beyond swing then reversal
+    const wickAbove = curr.high > swing5High && curr.close < swing5High; // wick above, closed below
+    const wickBelow = curr.low  < swing5Low  && curr.close > swing5Low;  // wick below, closed above
+    if (wickAbove) { bearScore += 2; signals.push('LIQ GRAB HIGH→SHORT'); }
+    if (wickBelow) { bullScore += 2; signals.push('LIQ GRAB LOW→LONG'); }
 
-      // Engulfing
-      if (currBull && !prevBull && curr.open <= prev.close && curr.close >= prev.open && currBody > prevBody * 1.1)
-        { bullScore += 3; signals.push('BULL ENGULF'); }
-      if (!currBull && prevBull && curr.open >= prev.close && curr.close <= prev.open && currBody > prevBody * 1.1)
-        { bearScore += 3; signals.push('BEAR ENGULF'); }
+    // Fair Value Gap (FVG): gap between candle[i-2].high and candle[i].low (bullish)
+    // or candle[i-2].low and candle[i].high (bearish)
+    if (last >= 2) {
+      const c0 = candles[last - 2];
+      const c2 = curr;
+      const bullFVG = c0.high < c2.low;   // gap up = bullish imbalance
+      const bearFVG = c0.low  > c2.high;  // gap down = bearish imbalance
+      if (bullFVG && price >= c0.high && price <= c2.low) { bullScore += 2; signals.push('BULL FVG'); }
+      if (bearFVG && price <= c0.low  && price >= c2.high){ bearScore += 2; signals.push('BEAR FVG'); }
+    }
 
-      // Doji on prev candle → follow current direction
-      if (prevBody / prevRange < 0.15) {
-        if (currBull) { bullScore += 1; signals.push('DOJI→BULL'); }
-        else          { bearScore += 1; signals.push('DOJI→BEAR'); }
+    // Order block: last strong opposite-direction candle before current move
+    // Bullish OB: last bearish candle before current bull run
+    // Bearish OB: last bullish candle before current bear run
+    let lastBearIdx = -1, lastBullIdx = -1;
+    for (let i = last - 1; i >= Math.max(0, last - 8); i--) {
+      if (lastBearIdx === -1 && candles[i].close < candles[i].open) lastBearIdx = i;
+      if (lastBullIdx === -1 && candles[i].close > candles[i].open) lastBullIdx = i;
+    }
+    // Price trading into bullish order block
+    if (lastBearIdx > -1 && currBull) {
+      const ob = candles[lastBearIdx];
+      if (price >= ob.low && price <= ob.high) { bullScore += 1.5; signals.push('BULL ORDER BLOCK'); }
+    }
+    // Price trading into bearish order block
+    if (lastBullIdx > -1 && !currBull) {
+      const ob = candles[lastBullIdx];
+      if (price >= ob.low && price <= ob.high) { bearScore += 1.5; signals.push('BEAR ORDER BLOCK'); }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 5 — CANDLESTICK PATTERNS
+    // ═══════════════════════════════════════════════════════════════
+
+    const prevBody = Math.abs(prev.close - prev.open);
+    const currBody = Math.abs(curr.close - curr.open);
+    const pUp = (prev.high - Math.max(prev.open, prev.close)) / prevRange;
+    const pLo = (Math.min(prev.open, prev.close) - prev.low) / prevRange;
+    const cUp = (curr.high - Math.max(curr.open, curr.close)) / currRange;
+    const cLo = (Math.min(curr.open, curr.close) - curr.low) / currRange;
+
+    // Engulfing (strong reversal)
+    if (currBull && !prevBull && curr.open <= prev.close && curr.close >= prev.open && currBody > prevBody * 1.1)
+      { bullScore += 3; signals.push('BULL ENGULF'); }
+    if (!currBull && prevBull && curr.open >= prev.close && curr.close <= prev.open && currBody > prevBody * 1.1)
+      { bearScore += 3; signals.push('BEAR ENGULF'); }
+
+    // Hammer / Shooting star
+    if (pLo > 0.6 && pUp < 0.2) { bullScore += 1.5; signals.push('HAMMER'); }
+    if (pUp > 0.6 && pLo < 0.2) { bearScore += 1.5; signals.push('SHOOT STAR'); }
+
+    // Wick rejection = strong
+    if (cUp > 0.65) { bearScore += 2; signals.push('UPPER WICK REJECT'); }
+    if (cLo > 0.65) { bullScore += 2; signals.push('LOWER WICK REJECT'); }
+
+    // Doji on prev = follow current
+    if (prevBody / prevRange < 0.15) {
+      if (currBull) { bullScore += 1; signals.push('DOJI→BULL'); }
+      else          { bearScore += 1; signals.push('DOJI→BEAR'); }
+    }
+
+    // Candle too large = late entry risk
+    if (currRange > avgRange20 * 2) {
+      noTradeScore += 2;
+      warnings.push('Candle too large — late entry risk');
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 6 — INDICATORS (confirmation only)
+    // ═══════════════════════════════════════════════════════════════
+
+    // VWAP bias
+    if (ta && ta.vwapDist != null) {
+      if (ta.vwapDist > 0.05)       { bullScore += 1.5; signals.push('ABOVE VWAP'); }
+      else if (ta.vwapDist < -0.05) { bearScore += 1.5; signals.push('BELOW VWAP'); }
+    }
+
+    // EMA alignment
+    if (ta && ta.emaAligned) {
+      if (ta.emaAligned === 'BULLISH')      { bullScore += 1; signals.push('EMA BULL STACK'); }
+      else if (ta.emaAligned === 'BEARISH') { bearScore += 1; signals.push('EMA BEAR STACK'); }
+      else { noTradeScore += 0.5; }
+      if (ta.ema9Slope > 0.01)       { bullScore += 0.5; }
+      else if (ta.ema9Slope < -0.01) { bearScore += 0.5; }
+    }
+
+    // RSI — divergence logic, not just extremes
+    if (ta && ta.rsi != null) {
+      const rsiVal = ta.rsi;
+      // Regular divergence: price HH but RSI LH = bearish div
+      if (hh && ta.rsiDelta < -1) { bearScore += 2; signals.push('BEAR RSI DIV'); }
+      // Regular divergence: price LL but RSI HL = bullish div
+      if (ll && ta.rsiDelta > 1)  { bullScore += 2; signals.push('BULL RSI DIV'); }
+      // Extremes
+      if (rsiVal > 75)           { bearScore += 2; signals.push('RSI OB ' + rsiVal.toFixed(0)); }
+      else if (rsiVal < 25)      { bullScore += 2; signals.push('RSI OS ' + rsiVal.toFixed(0)); }
+      else if (ta.rsiDelta > 2)  { bullScore += 0.5; }
+      else if (ta.rsiDelta < -2) { bearScore += 0.5; }
+    }
+
+    // MACD
+    if (ta && ta.macdHist != null) {
+      if (ta.macdCrossing) {
+        if (ta.macdHist > 0) { bullScore += 1.5; signals.push('MACD BULL X'); }
+        else                 { bearScore += 1.5; signals.push('MACD BEAR X'); }
+      } else {
+        if (ta.macdHist > 0 && ta.macdHistDelta > 0)      { bullScore += 0.5; }
+        else if (ta.macdHist < 0 && ta.macdHistDelta < 0) { bearScore += 0.5; }
+        else if (ta.macdHist > 0 && ta.macdHistDelta < 0) { bearScore += 0.5; signals.push('MACD FADING'); noTradeScore += 0.5; }
+        else if (ta.macdHist < 0 && ta.macdHistDelta > 0) { bullScore += 0.5; }
       }
+    }
 
-      // Inside bar consolidation
-      if (curr.high < prev.high && curr.low > prev.low && price) {
-        if (price > prev.close) { bullScore += 1; signals.push('INSIDE BAR↑'); }
-        else                    { bearScore += 1; signals.push('INSIDE BAR↓'); }
+    // Volume confirmation
+    if (ta && ta.volZScore != null) {
+      if (ta.volZScore > 2) {
+        if (ta.ret1 > 0) { bullScore += 1.5; signals.push('VOL SPIKE BULL'); }
+        else             { bearScore += 1.5; signals.push('VOL SPIKE BEAR'); }
+      } else if (ta.volZScore < -1.5) {
+        noTradeScore += 1.5;
+        warnings.push('Volume drying up — low conviction');
+        signals.push('VOL DRY');
       }
+    }
 
-      // Hammer / Shooting star on prev candle
-      const pUp = (prev.high - Math.max(prev.open, prev.close)) / prevRange;
-      const pLo = (Math.min(prev.open, prev.close) - prev.low) / prevRange;
-      if (pLo > 0.6 && pUp < 0.2) { bullScore += 1.5; signals.push('HAMMER'); }
-      if (pUp > 0.6 && pLo < 0.2) { bearScore += 1.5; signals.push('SHOOTING STAR'); }
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 7 — SENTIMENT & POSITIONING (Polymarket)
+    // ═══════════════════════════════════════════════════════════════
 
-      // Current candle wick rejection
-      const cUp = (curr.high - Math.max(curr.open, curr.close)) / currRange;
-      const cLo = (Math.min(curr.open, curr.close) - curr.low) / currRange;
-      if (cUp > 0.6) { bearScore += 1.5; signals.push('UPPER WICK REJECT'); }
-      if (cLo > 0.6) { bullScore += 1.5; signals.push('LOWER WICK REJECT'); }
+    if (state.upPct && state.downPct) {
+      const up = parseFloat(state.upPct);
+      const dn = parseFloat(state.downPct);
 
-      // ─── A4. BODY SIZE — expansion = momentum, contraction = exhaustion ──
-      const avgBody5  = candles.slice(-6, -1).reduce((s, c) => s + Math.abs(c.close - c.open), 0) / 5;
-      const avgBody20 = candles.slice(-21, -1).reduce((s, c) => s + Math.abs(c.close - c.open), 0) / 20;
-      const bodyRatio = avgBody5 / (avgBody20 || 1);
-      if (bodyRatio > 1.4) {
-        if (currBull) { bullScore += 1; signals.push('BODY EXPAND BULL'); }
-        else          { bearScore += 1; signals.push('BODY EXPAND BEAR'); }
-      } else if (bodyRatio < 0.6) {
-        signals.push('BODY CONTRACT');
+      // Contrarian logic: crowd too one-sided = fade them
+      if (up > 75) {
+        // Crowd heavily long → contrarian SHORT signal
+        bearScore += 1.5;
+        signals.push('CROWD LONG ' + up + '%→CONTRA SHORT');
+      } else if (dn > 75) {
+        bullScore += 1.5;
+        signals.push('CROWD SHORT ' + dn + '%→CONTRA LONG');
+      } else if (up > 60) {
+        bullScore += 2;
+        signals.push('MKT UP ' + up + '%');
+      } else if (dn > 60) {
+        bearScore += 2;
+        signals.push('MKT DOWN ' + dn + '%');
+      } else if (up > 52) {
+        bullScore += 1;
+        signals.push('MKT LEAN UP');
+      } else if (dn > 52) {
+        bearScore += 1;
+        signals.push('MKT LEAN DOWN');
+      } else {
+        noTradeScore += 1;
+        warnings.push('Market split — no edge from sentiment');
       }
+    }
 
-      // ─── A5. CONSECUTIVE STREAK — 4+ same-dir → mean reversion ──────────
+    // Momentum exhaustion check
+    if (ta) {
+      // Weighted momentum
+      const r1 = (candles[last].close   - candles[last-1].close) / candles[last-1].close * 100;
+      const r2 = (candles[last-1].close - candles[last-2].close) / candles[last-2].close * 100;
+      const r3 = (candles[last-2].close - candles[last-3].close) / candles[last-3].close * 100;
+      const wm = (r1 * 3 + r2 * 2 + r3) / 6;
+      if (wm > 0.05)       { bullScore += 1.5; signals.push('MOM +' + wm.toFixed(3) + '%'); }
+      else if (wm < -0.05) { bearScore += 1.5; signals.push('MOM ' + wm.toFixed(3) + '%'); }
+
+      // Streak exhaustion
       let streak = 0, streakDir = null;
       for (let i = last; i >= Math.max(0, last - 7); i--) {
         const b = candles[i].close > candles[i].open;
@@ -1282,192 +1532,112 @@
         if (b !== streakDir) break;
         streak++;
       }
-      if (streak >= 4) {
-        if (streakDir) { bearScore += 1.5; signals.push(streak + ' BULL STREAK→FADE'); }
-        else           { bullScore += 1.5; signals.push(streak + ' BEAR STREAK→FADE'); }
-      } else if (streak === 3) {
-        if (streakDir) { bullScore += 0.5; signals.push('3 BULL RUN'); }
-        else           { bearScore += 0.5; signals.push('3 BEAR RUN'); }
+      if (streak >= 5) {
+        if (streakDir) { bearScore += 2; signals.push(streak + ' BULL STREAK EXHAUSTION'); }
+        else           { bullScore += 2; signals.push(streak + ' BEAR STREAK EXHAUSTION'); }
+        warnings.push('Streak exhaustion — mean reversion risk');
       }
-
-      // ─── A6. PIVOT POINTS — 20c high/low/mid as S/R ─────────────────────
-      const h20 = Math.max(...candles.slice(-20).map(c => c.high));
-      const l20 = Math.min(...candles.slice(-20).map(c => c.low));
-      const m20 = (h20 + l20) / 2;
-      if (price) {
-        if ((h20 - price) / price * 100 < 0.05 && price <= h20) { bearScore += 1.5; signals.push('AT 20C RESIST'); }
-        if ((price - l20) / price * 100 < 0.05 && price >= l20) { bullScore += 1.5; signals.push('AT 20C SUPPORT'); }
-        if (price > h20 * 1.001) { bullScore += 2; signals.push('20C BREAKOUT↑'); }
-        if (price < l20 * 0.999) { bearScore += 2; signals.push('20C BREAKDOWN↓'); }
-        if (price > m20) { bullScore += 0.5; signals.push('ABOVE 20C MID'); }
-        else             { bearScore += 0.5; signals.push('BELOW 20C MID'); }
-      }
-
-      // ─── A7. VOLUME TREND — 5c avg vs 20c avg ────────────────────────────
-      const avgVol5  = candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
-      const avgVol20 = candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
-      const vRatio   = avgVol5 / (avgVol20 || 1);
-      if (vRatio > 1.5) {
-        if (currBull) { bullScore += 1.5; signals.push('VOL SURGE BULL x' + vRatio.toFixed(1)); }
-        else          { bearScore += 1.5; signals.push('VOL SURGE BEAR x' + vRatio.toFixed(1)); }
-      } else if (vRatio > 1.2) {
-        if (currBull) bullScore += 0.5; else bearScore += 0.5;
-      } else if (vRatio < 0.6) { signals.push('VOL DRY x' + vRatio.toFixed(1)); }
-
-      // Volume climax = exhaustion
-      if (curr.volume / (avgVol20 || 1) > 3) {
-        if (currBull) { bearScore += 1; signals.push('VOL CLIMAX→FADE'); }
-        else          { bullScore += 1; signals.push('VOL CLIMAX→FADE'); }
-      }
-
-      // ─── A8. WEIGHTED MOMENTUM (last 3 candle returns) ───────────────────
-      const r1 = (candles[last].close     - candles[last-1].close) / candles[last-1].close * 100;
-      const r2 = (candles[last-1].close   - candles[last-2].close) / candles[last-2].close * 100;
-      const r3 = (candles[last-2].close   - candles[last-3].close) / candles[last-3].close * 100;
-      const wm = (r1 * 3 + r2 * 2 + r3) / 6;
-      if (wm > 0.04)       { bullScore += 1.5; signals.push('WGT MOM +' + wm.toFixed(3) + '%'); }
-      else if (wm < -0.04) { bearScore += 1.5; signals.push('WGT MOM ' + wm.toFixed(3) + '%'); }
-      else if (wm > 0.01)  { bullScore += 0.5; }
-      else if (wm < -0.01) { bearScore += 0.5; }
-
-      // ─── A9. MOMENTUM DIVERGENCE ─────────────────────────────────────────
-      if (candles[last].high > candles[last-3].high && candles[last].close < candles[last-3].close)
-        { bearScore += 1.5; signals.push('BEAR DIVERGE'); }
-      if (candles[last].low < candles[last-3].low && candles[last].close > candles[last-3].close)
-        { bullScore += 1.5; signals.push('BULL DIVERGE'); }
-
-      // ─── A10. SPEED — is the move accelerating? ──────────────────────────
-      const sp1  = Math.abs(candles[last].close   - candles[last-1].close);
-      const sp23 = (Math.abs(candles[last-1].close - candles[last-2].close) +
-                    Math.abs(candles[last-2].close - candles[last-3].close)) / 2;
-      const accel = sp1 - sp23;
-      if (accel > 0 && currBull)  { bullScore += 0.5; signals.push('ACCEL↑'); }
-      if (accel > 0 && !currBull) { bearScore += 0.5; signals.push('ACCEL↓'); }
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // SECTION B — LIVE INDICATOR SIGNALS
+    // STEP 8 — CONFLICT CHECK
+    // If signals are significantly mixed → NO TRADE
     // ═══════════════════════════════════════════════════════════════
 
-    // B1. Polymarket smart money
-    if (state.upPct && state.downPct) {
-      const up = parseFloat(state.upPct), dn = parseFloat(state.downPct);
-      if (up > 65)       { bullScore += 3;   signals.push('MKT STRONG UP ' + up + '%'); }
-      else if (dn > 65)  { bearScore += 3;   signals.push('MKT STRONG DOWN ' + dn + '%'); }
-      else if (up > 55)  { bullScore += 1.5; signals.push('MKT LEAN UP ' + up + '%'); }
-      else if (dn > 55)  { bearScore += 1.5; signals.push('MKT LEAN DOWN ' + dn + '%'); }
-      else               { signals.push('MKT SPLIT ' + up + '/' + dn); }
-    }
+    const totalScore  = bullScore + bearScore;
+    const margin      = Math.abs(bullScore - bearScore);
+    const confPct     = totalScore > 0 ? (Math.max(bullScore, bearScore) / totalScore * 100) : 50;
 
-    // B2. PTB distance + momentum
-    if (price && ptb && ta) {
-      const diff = price - ptb, pct = (diff / ptb) * 100, above = diff > 0;
-      if (Math.abs(pct) > 0.1)       { if (above) { bullScore += 5; signals.push('PTB +' + pct.toFixed(3) + '% SAFE'); } else { bearScore += 5; signals.push('PTB ' + pct.toFixed(3) + '% SAFE'); } }
-      else if (Math.abs(pct) > 0.03) { if (above) { bullScore += 3; signals.push('PTB +' + pct.toFixed(3) + '%'); } else { bearScore += 3; signals.push('PTB ' + pct.toFixed(3) + '%'); } }
-      else if (Math.abs(pct) > 0.01) { if (above) { bullScore += 1; signals.push('PTB +' + pct.toFixed(3) + '% THIN'); } else { bearScore += 1; signals.push('PTB ' + pct.toFixed(3) + '% THIN'); } }
-      else { signals.push('PTB FLAT'); }
-      if (above) {
-        if (ta.rsiDelta < 0 || ta.macdHistDelta < 0 || ta.ema9Slope < 0) { bearScore += 2; signals.push('ABOVE PTB FADING'); }
-        else { bullScore += Math.min(pct * 5, 2); signals.push('ABOVE PTB STRONG'); }
-      } else {
-        if (ta.rsiDelta > 0 || ta.macdHistDelta > 0 || ta.ema9Slope > 0) { bullScore += 2; signals.push('BELOW PTB RECOVERING'); }
-        else { bearScore += Math.min(Math.abs(pct) * 5, 2); signals.push('BELOW PTB WEAK'); }
+    // Conflicting signals check
+    if (bullScore > 0 && bearScore > 0) {
+      const conflictRatio = Math.min(bullScore, bearScore) / Math.max(bullScore, bearScore);
+      if (conflictRatio > 0.7) {
+        noTradeScore += 3;
+        warnings.push('Signals heavily conflicting (' + (conflictRatio * 100).toFixed(0) + '% conflict)');
+      } else if (conflictRatio > 0.5) {
+        noTradeScore += 1.5;
+        warnings.push('Mixed signals — reduced confidence');
       }
     }
 
-    // B3. VWAP
-    if (ta && ta.vwapDist != null) {
-      if (ta.vwapDist > 0.05)       { bullScore += 1.5; signals.push('VWAP +' + ta.vwapDist.toFixed(3) + '%'); }
-      else if (ta.vwapDist < -0.05) { bearScore += 1.5; signals.push('VWAP ' + ta.vwapDist.toFixed(3) + '%'); }
-    }
-
-    // B4. EMA
-    if (ta && ta.emaAligned) {
-      if (ta.emaAligned === 'BULLISH')      { bullScore += 1;   signals.push('EMA BULL'); }
-      else if (ta.emaAligned === 'BEARISH') { bearScore += 1;   signals.push('EMA BEAR'); }
-      if (ta.ema9Slope > 0.01)       { bullScore += 0.5; signals.push('EMA9↑'); }
-      else if (ta.ema9Slope < -0.01) { bearScore += 0.5; signals.push('EMA9↓'); }
-    }
-
-    // B5. RSI
-    if (ta && ta.rsi != null) {
-      if (ta.rsi > 70)           { bearScore += 2;   signals.push('RSI OB ' + ta.rsi.toFixed(1)); }
-      else if (ta.rsi < 30)      { bullScore += 2;   signals.push('RSI OS ' + ta.rsi.toFixed(1)); }
-      else if (ta.rsiDelta > 2)  { bullScore += 0.5; signals.push('RSI↑'); }
-      else if (ta.rsiDelta < -2) { bearScore += 0.5; signals.push('RSI↓'); }
-    }
-
-    // B6. MACD
-    if (ta && ta.macdHist != null) {
-      if (ta.macdCrossing) {
-        if (ta.macdHist > 0) { bullScore += 1.5; signals.push('MACD BULL X'); }
-        else                 { bearScore += 1.5; signals.push('MACD BEAR X'); }
-      } else {
-        if      (ta.macdHist > 0 && ta.macdHistDelta > 0) { bullScore += 0.5; signals.push('MACD EXPAND'); }
-        else if (ta.macdHist < 0 && ta.macdHistDelta < 0) { bearScore += 0.5; signals.push('MACD BEAR EXP'); }
-        else if (ta.macdHist > 0 && ta.macdHistDelta < 0) { bearScore += 0.5; signals.push('MACD FADING'); }
-        else if (ta.macdHist < 0 && ta.macdHistDelta > 0) { bullScore += 0.5; signals.push('MACD RECOVER'); }
-      }
-    }
-
-    // B7. Volume z-score
-    if (ta && ta.volZScore != null) {
-      if (ta.volZScore > 2) {
-        if (ta.ret1 > 0) { bullScore += 1; signals.push('VOL SPIKE BULL'); }
-        else             { bearScore += 1; signals.push('VOL SPIKE BEAR'); }
-      } else if (ta.volZScore < -1) {
-        if (price > ptb) bearScore += 0.5; else bullScore += 0.5;
-        signals.push('VOL DRY FADE');
-      }
-    }
-
-    // B8. Short-term momentum
-    if (ta && ta.ret3 != null) {
-      if (ta.ret3 > 0.1)       { bullScore += 0.5; signals.push('MOM +' + ta.ret3.toFixed(3) + '%'); }
-      else if (ta.ret3 < -0.1) { bearScore += 0.5; signals.push('MOM ' + ta.ret3.toFixed(3) + '%'); }
+    // Risk:Reward check — only trade if clear edge
+    if (margin < 2) {
+      noTradeScore += 2;
+      warnings.push('Insufficient signal edge (margin ' + margin.toFixed(1) + ')');
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // FINAL DECISION
+    // STEP 9 — FINAL DECISION
     // ═══════════════════════════════════════════════════════════════
 
-    const totalScore = bullScore + bearScore;
-    const margin     = Math.abs(bullScore - bearScore);
-    const confPct    = totalScore > 0 ? (Math.max(bullScore, bearScore) / totalScore * 100) : 50;
+    const isLong   = bullScore > bearScore;
+    const direction = bullScore > bearScore ? 'UP' : 'DOWN';
 
-    let isUp;
-    if (bullScore === bearScore) {
-      isUp = parseFloat(state.upPct || 50) >= 50;
-      signals.push('TIE → MARKET DECIDES');
-    } else {
-      isUp = bullScore > bearScore;
+    // NO TRADE conditions
+    const noTrade = noTradeScore >= 4 || margin < 1.5 || confPct < 57;
+
+    let confLabel, confLevel;
+    if (margin >= 6)      { confLabel = 'HIGH';   confLevel = 'high'; }
+    else if (margin >= 3) { confLabel = 'MEDIUM'; confLevel = 'medium'; }
+    else                  { confLabel = 'LOW';    confLevel = 'low'; }
+
+    // Entry / SL / TP calculation
+    const entryZone = price ? '$' + price.toFixed(2) : '--';
+    const slDist    = ptb ? Math.abs(price - ptb) * 1.2 : (price * 0.001);
+    const tpDist    = slDist * 2;  // minimum 1:2 R:R
+    const sl = price ? '$' + (isLong ? price - slDist : price + slDist).toFixed(2) : '--';
+    const tp = price ? '$' + (isLong ? price + tpDist : price - tpDist).toFixed(2) : '--';
+
+    console.log('[AGENT] SNIPER: ' + (noTrade ? 'NO TRADE' : direction) +
+      ' | Env:' + marketCondition + ' | Conf:' + confLabel +
+      ' | Bull:' + bullScore.toFixed(1) + ' Bear:' + bearScore.toFixed(1) +
+      ' | NoTrade:' + noTradeScore.toFixed(1) +
+      '\n[AGENT] Signals: ' + signals.join(' · ') +
+      (warnings.length ? '\n[AGENT] Warnings: ' + warnings.join(' · ') : ''));
+
+    if (noTrade) {
+      showNoTrade(marketCondition, warnings.join(' · ') || 'No high-probability setup detected.');
+      finalPredDirection = null;
+      finalPredPTB       = ptb;
+      finalPredLocked    = true;
+      return;
     }
 
-    let confLevel, confLabel;
-    if (margin >= 5)      { confLevel = 'high';   confLabel = 'HIGH'; }
-    else if (margin >= 2) { confLevel = 'medium'; confLabel = 'MED'; }
-    else                  { confLevel = 'low';    confLabel = 'LOW'; }
-
+    // ── Render prediction ──
     els.finalPred.style.display = 'block';
-    els.finalPred.className     = 'agent-final-pred pred-' + (isUp ? 'up' : 'down');
-    if (els.finalIcon)    els.finalIcon.textContent    = isUp ? '🟢' : '🔴';
-    if (els.finalCall)    els.finalCall.textContent    = isUp ? 'UP' : 'DOWN';
+    els.finalPred.className     = 'agent-final-pred pred-' + (isLong ? 'up' : 'down');
+    if (els.finalIcon)    els.finalIcon.textContent    = isLong ? '🟢' : '🔴';
+    if (els.finalCall)    els.finalCall.textContent    = isLong ? 'UP' : 'DOWN';
     if (els.finalConf) {
       els.finalConf.textContent = confLabel + ' ' + confPct.toFixed(0) + '%';
       els.finalConf.className   = 'agent-final-conf ' + confLevel;
     }
-    if (els.finalStatus)  els.finalStatus.textContent  = 'LOCKED IN';
-    if (els.finalPrice)   els.finalPrice.textContent   = price ? formatPrice(price) : '--';
-    if (els.finalSignals) els.finalSignals.textContent = signals.join(' · ');
+    if (els.finalStatus)  els.finalStatus.textContent  = marketCondition + ' · LOCKED';
+    if (els.finalPrice)   els.finalPrice.textContent   = entryZone;
+    if (els.finalSignals) els.finalSignals.textContent =
+      'Entry: ' + entryZone + ' | SL: ' + sl + ' | TP: ' + tp +
+      ' · ' + signals.join(' · ');
 
-    finalPredDirection = isUp ? 'up' : 'down';
+    finalPredDirection = isLong ? 'up' : 'down';
     finalPredPTB       = ptb;
     finalPredLocked    = true;
+  }
 
-    console.log('[AGENT] FINAL: ' + (isUp ? 'UP' : 'DOWN') +
-      ' | ' + confLabel + ' ' + confPct.toFixed(1) + '%' +
-      ' | Bull:' + bullScore.toFixed(1) + ' Bear:' + bearScore.toFixed(1) +
-      '\n[AGENT] ' + signals.join(' · '));
+  // ── Show NO TRADE state ──
+  function showNoTrade(condition, reason) {
+    if (!els.finalPred) return;
+    els.finalPred.style.display = 'block';
+    els.finalPred.className     = 'agent-final-pred pred-neutral';
+    if (els.finalIcon)    els.finalIcon.textContent    = '🚫';
+    if (els.finalCall)    els.finalCall.textContent    = 'NO TRADE';
+    if (els.finalConf) {
+      els.finalConf.textContent = 'SKIP';
+      els.finalConf.className   = 'agent-final-conf low';
+    }
+    if (els.finalStatus)  els.finalStatus.textContent  = condition || 'NO EDGE';
+    if (els.finalPrice)   els.finalPrice.textContent   = state.btcPrice ? formatPrice(state.btcPrice) : '--';
+    if (els.finalSignals) els.finalSignals.textContent = reason || 'No high-probability setup.';
+    console.log('[AGENT] NO TRADE — ' + (condition || '') + ': ' + (reason || ''));
   }
 
 
@@ -1551,23 +1721,20 @@
       finalPredPTB = null;
       if (els.finalPred) els.finalPred.style.display = 'none';
 
-      // Trigger refresh for new window data
+      // Trigger refresh for new window data (guard prevents concurrent runs)
       setTimeout(refresh, 500);
     }
 
-    // Analyzing at 1:00 into window (4:00 left), final vote at 1:30 into window (3:30 left)
+    // Analyzing at 1:00 into window (4:00 left), sniper vote at 1:30 (3:30 left)
     if (left > 240) {
-      // Less than 1 minute into window: hide both
       if (els.finalPred) els.finalPred.style.display = 'none';
       if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
       finalPredLocked = false;
     } else if (left > 210 && left <= 240) {
-      // 1:00–1:30 into window: show analyzing spinner
       if (els.finalPred) els.finalPred.style.display = 'none';
       if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'flex';
       finalPredLocked = false;
     } else {
-      // 1:30+ into window (3:30 or less remaining): fire and lock prediction
       if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
       if (!finalPredLocked) {
         analyzeFinalPrediction(window._lastCandles || null);
@@ -1611,7 +1778,7 @@
       try {
         const ta = computeTA(candles);
         updateTAUI(ta);
-        window._lastCandles = candles; // store for final prediction
+        window._lastCandles = candles; // store for sniper engine
       } catch (e) { console.error('[AGENT] TA error:', e); }
 
       // Chart — re-render with latest PTB (price points fed by WebSocket)
