@@ -15,165 +15,6 @@
     'Content-Type': 'application/json',
   };
 
-  // ═══════════════════════════════════════════
-  // ACCESS GATE
-  // ═══════════════════════════════════════════
-
-  const ACCESS_LS_KEY = 'vg_access_code';
-
-  function isUnlocked() {
-    try { return !!localStorage.getItem(ACCESS_LS_KEY); } catch(e) { return false; }
-  }
-
-  function generateRandomCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const seg = (n) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-    return 'VG-' + seg(4) + '-' + seg(4);
-  }
-
-  async function generateCode() {
-    const btn = document.getElementById('agentGenCodeBtn');
-    const display = document.getElementById('agentCodeDisplay');
-    const codeEl = document.getElementById('agentCodeValue');
-    const msg = document.getElementById('agentAccessMsg');
-
-    btn.disabled = true;
-    btn.textContent = 'Generating...';
-    setAccessMsg('info', 'Creating your code...');
-
-    const code = generateRandomCode();
-
-    try {
-      const res = await fetch(SUPABASE_URL + '/rest/v1/access_codes', {
-        method: 'POST',
-        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ code: code, claimed: false }),
-      });
-
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt);
-      }
-
-      codeEl.textContent = code;
-      display.classList.add('visible');
-      setAccessMsg('info', 'Enter the code above to unlock access.');
-
-      // Auto-fill the input
-      const input = document.getElementById('agentCodeInput');
-      if (input) input.value = code;
-
-    } catch (e) {
-      setAccessMsg('error', 'Failed to generate code. Try again.');
-      console.error('[AGENT] Generate code error:', e);
-    }
-
-    btn.disabled = false;
-    btn.textContent = 'Generate New Code';
-  }
-
-  async function claimCode(code) {
-    const msg = document.getElementById('agentAccessMsg');
-    const unlockBtn = document.getElementById('agentUnlockBtn');
-
-    if (!code || code.trim() === '') {
-      setAccessMsg('error', 'Please enter a code.');
-      return;
-    }
-
-    unlockBtn.disabled = true;
-    setAccessMsg('info', 'Verifying...');
-
-    try {
-      // Check if code exists and is unclaimed
-      const res = await fetch(
-        SUPABASE_URL + '/rest/v1/access_codes?code=eq.' + encodeURIComponent(code.trim().toUpperCase()) + '&claimed=eq.false',
-        { headers: SB_HEADERS }
-      );
-
-      if (!res.ok) throw new Error('Fetch failed');
-      const data = await res.json();
-
-      if (!data || data.length === 0) {
-        setAccessMsg('error', 'Invalid or already used code. Generate a new one.');
-        unlockBtn.disabled = false;
-        return;
-      }
-
-      // Claim the code
-      const claimRes = await fetch(
-        SUPABASE_URL + '/rest/v1/access_codes?code=eq.' + encodeURIComponent(code.trim().toUpperCase()),
-        {
-          method: 'PATCH',
-          headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ claimed: true, claimed_at: new Date().toISOString() }),
-        }
-      );
-
-      if (!claimRes.ok) throw new Error('Claim failed');
-
-      // Save to localStorage — this browser is now unlocked
-      try { localStorage.setItem(ACCESS_LS_KEY, code.trim().toUpperCase()); } catch(e) {}
-
-      setAccessMsg('success', 'Access granted! Loading...');
-      setTimeout(unlockUI, 600);
-
-    } catch (e) {
-      setAccessMsg('error', 'Error verifying code. Try again.');
-      console.error('[AGENT] Claim code error:', e);
-      unlockBtn.disabled = false;
-    }
-  }
-
-  function setAccessMsg(type, text) {
-    const msg = document.getElementById('agentAccessMsg');
-    if (!msg) return;
-    msg.className = 'agent-access-msg ' + type;
-    msg.textContent = text;
-  }
-
-  function unlockUI() {
-    const gate = document.getElementById('agentAccessGate');
-    const wrap = document.getElementById('agentContentWrap');
-    if (gate) gate.classList.remove('visible');
-    if (wrap) wrap.classList.remove('locked');
-    // Start agent data feeds now that access is granted
-    if (typeof startAgent === 'function') startAgent();
-  }
-
-  function showAccessGate() {
-    const gate = document.getElementById('agentAccessGate');
-    const wrap = document.getElementById('agentContentWrap');
-    if (gate) gate.classList.add('visible');
-    if (wrap) wrap.classList.add('locked');
-
-    // Wire up buttons
-    const genBtn = document.getElementById('agentGenCodeBtn');
-    const unlockBtn = document.getElementById('agentUnlockBtn');
-    const copyBtn = document.getElementById('agentCopyCodeBtn');
-    const input = document.getElementById('agentCodeInput');
-
-    if (genBtn) genBtn.addEventListener('click', generateCode);
-    if (unlockBtn) unlockBtn.addEventListener('click', function() {
-      const code = input ? input.value : '';
-      claimCode(code);
-    });
-    if (input) input.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') claimCode(input.value);
-    });
-    if (copyBtn) copyBtn.addEventListener('click', function() {
-      const val = document.getElementById('agentCodeValue');
-      if (val && val.textContent) {
-        navigator.clipboard.writeText(val.textContent).then(function() {
-          copyBtn.textContent = '✓';
-          setTimeout(function() { copyBtn.textContent = '⧉'; }, 1500);
-        });
-      }
-    });
-  }
-
-  // Check access on init — if already unlocked, skip gate entirely
-
   // ── State ──
   const state = {
     btcPrice: null,
@@ -1331,225 +1172,304 @@
   }
 
   // ═══════════════════════════════════════════
+  // ═══════════════════════════════════════════
   // SMART FINAL PREDICTION ENGINE
+  // Deep candle history analysis — fires 1:30 into window (3:30 left)
   // ═══════════════════════════════════════════
 
-  function analyzeFinalPrediction() {
+  function analyzeFinalPrediction(candles) {
     if (!els.finalPred) return;
 
     const signals = [];
     let bullScore = 0;
     let bearScore = 0;
-    const ta = state.ta;
+    const ta    = state.ta;
+    const price = state.btcPrice;
+    const ptb   = state.priceToBeat;
 
-    // ═══ 1. MARKET ODDS — PRIMARY SIGNAL (Polymarket = smart money) ═══
-    // Ranked highest: the market is usually right
+    // ═══════════════════════════════════════════════════════════════
+    // SECTION A — DEEP CANDLE HISTORY (analyzes last 20 candles)
+    // ═══════════════════════════════════════════════════════════════
+
+    if (candles && candles.length >= 20) {
+      const len  = candles.length;
+      const last = len - 1;
+      const curr = candles[last];
+      const prev = candles[last - 1];
+
+      // ─── A1. TREND STRENGTH — slope over last 10 & 20 candles ───────────
+      const closes10 = candles.slice(-10).map(c => c.close);
+      const closes20 = candles.slice(-20).map(c => c.close);
+      const slope10  = (closes10[9] - closes10[0]) / closes10[0] * 100;
+      const slope20  = (closes20[19] - closes20[0]) / closes20[0] * 100;
+
+      if (slope10 > 0.05 && slope20 > 0.02)       { bullScore += 1.5; signals.push('TREND↑ ' + slope10.toFixed(3) + '%'); }
+      else if (slope10 < -0.05 && slope20 < -0.02) { bearScore += 1.5; signals.push('TREND↓ ' + slope10.toFixed(3) + '%'); }
+      else if (slope10 > 0.03)                     { bullScore += 0.5; signals.push('WEAK TREND↑'); }
+      else if (slope10 < -0.03)                    { bearScore += 0.5; signals.push('WEAK TREND↓'); }
+
+      // Both timeframes agree = stronger signal
+      if (Math.sign(slope10) === Math.sign(slope20) && Math.abs(slope10) > 0.02) {
+        if (slope10 > 0) bullScore += 0.5; else bearScore += 0.5;
+        signals.push('TREND ALIGNED');
+      }
+
+      // ─── A2. MARKET STRUCTURE — HH/HL or LH/LL ──────────────────────────
+      const s = candles.slice(-6);
+      const hh = s[5].high > s[4].high && s[4].high > s[3].high;
+      const hl = s[5].low  > s[4].low  && s[4].low  > s[3].low;
+      const lh = s[5].high < s[4].high && s[4].high < s[3].high;
+      const ll = s[5].low  < s[4].low  && s[4].low  < s[3].low;
+      if (hh && hl)      { bullScore += 2; signals.push('HH/HL UPTREND'); }
+      else if (lh && ll) { bearScore += 2; signals.push('LH/LL DOWNTREND'); }
+      else if (hh)       { bullScore += 0.5; signals.push('HH BIAS'); }
+      else if (ll)       { bearScore += 0.5; signals.push('LL BIAS'); }
+
+      // ─── A3. CANDLESTICK PATTERNS ────────────────────────────────────────
+      const prevBull  = prev.close > prev.open;
+      const currBull  = curr.close > curr.open;
+      const prevBody  = Math.abs(prev.close - prev.open);
+      const currBody  = Math.abs(curr.close - curr.open);
+      const currRange = (curr.high - curr.low) || 1;
+      const prevRange = (prev.high - prev.low) || 1;
+
+      // Engulfing
+      if (currBull && !prevBull && curr.open <= prev.close && curr.close >= prev.open && currBody > prevBody * 1.1)
+        { bullScore += 3; signals.push('BULL ENGULF'); }
+      if (!currBull && prevBull && curr.open >= prev.close && curr.close <= prev.open && currBody > prevBody * 1.1)
+        { bearScore += 3; signals.push('BEAR ENGULF'); }
+
+      // Doji on prev candle → follow current direction
+      if (prevBody / prevRange < 0.15) {
+        if (currBull) { bullScore += 1; signals.push('DOJI→BULL'); }
+        else          { bearScore += 1; signals.push('DOJI→BEAR'); }
+      }
+
+      // Inside bar consolidation
+      if (curr.high < prev.high && curr.low > prev.low && price) {
+        if (price > prev.close) { bullScore += 1; signals.push('INSIDE BAR↑'); }
+        else                    { bearScore += 1; signals.push('INSIDE BAR↓'); }
+      }
+
+      // Hammer / Shooting star on prev candle
+      const pUp = (prev.high - Math.max(prev.open, prev.close)) / prevRange;
+      const pLo = (Math.min(prev.open, prev.close) - prev.low) / prevRange;
+      if (pLo > 0.6 && pUp < 0.2) { bullScore += 1.5; signals.push('HAMMER'); }
+      if (pUp > 0.6 && pLo < 0.2) { bearScore += 1.5; signals.push('SHOOTING STAR'); }
+
+      // Current candle wick rejection
+      const cUp = (curr.high - Math.max(curr.open, curr.close)) / currRange;
+      const cLo = (Math.min(curr.open, curr.close) - curr.low) / currRange;
+      if (cUp > 0.6) { bearScore += 1.5; signals.push('UPPER WICK REJECT'); }
+      if (cLo > 0.6) { bullScore += 1.5; signals.push('LOWER WICK REJECT'); }
+
+      // ─── A4. BODY SIZE — expansion = momentum, contraction = exhaustion ──
+      const avgBody5  = candles.slice(-6, -1).reduce((s, c) => s + Math.abs(c.close - c.open), 0) / 5;
+      const avgBody20 = candles.slice(-21, -1).reduce((s, c) => s + Math.abs(c.close - c.open), 0) / 20;
+      const bodyRatio = avgBody5 / (avgBody20 || 1);
+      if (bodyRatio > 1.4) {
+        if (currBull) { bullScore += 1; signals.push('BODY EXPAND BULL'); }
+        else          { bearScore += 1; signals.push('BODY EXPAND BEAR'); }
+      } else if (bodyRatio < 0.6) {
+        signals.push('BODY CONTRACT');
+      }
+
+      // ─── A5. CONSECUTIVE STREAK — 4+ same-dir → mean reversion ──────────
+      let streak = 0, streakDir = null;
+      for (let i = last; i >= Math.max(0, last - 7); i--) {
+        const b = candles[i].close > candles[i].open;
+        if (streakDir === null) streakDir = b;
+        if (b !== streakDir) break;
+        streak++;
+      }
+      if (streak >= 4) {
+        if (streakDir) { bearScore += 1.5; signals.push(streak + ' BULL STREAK→FADE'); }
+        else           { bullScore += 1.5; signals.push(streak + ' BEAR STREAK→FADE'); }
+      } else if (streak === 3) {
+        if (streakDir) { bullScore += 0.5; signals.push('3 BULL RUN'); }
+        else           { bearScore += 0.5; signals.push('3 BEAR RUN'); }
+      }
+
+      // ─── A6. PIVOT POINTS — 20c high/low/mid as S/R ─────────────────────
+      const h20 = Math.max(...candles.slice(-20).map(c => c.high));
+      const l20 = Math.min(...candles.slice(-20).map(c => c.low));
+      const m20 = (h20 + l20) / 2;
+      if (price) {
+        if ((h20 - price) / price * 100 < 0.05 && price <= h20) { bearScore += 1.5; signals.push('AT 20C RESIST'); }
+        if ((price - l20) / price * 100 < 0.05 && price >= l20) { bullScore += 1.5; signals.push('AT 20C SUPPORT'); }
+        if (price > h20 * 1.001) { bullScore += 2; signals.push('20C BREAKOUT↑'); }
+        if (price < l20 * 0.999) { bearScore += 2; signals.push('20C BREAKDOWN↓'); }
+        if (price > m20) { bullScore += 0.5; signals.push('ABOVE 20C MID'); }
+        else             { bearScore += 0.5; signals.push('BELOW 20C MID'); }
+      }
+
+      // ─── A7. VOLUME TREND — 5c avg vs 20c avg ────────────────────────────
+      const avgVol5  = candles.slice(-5).reduce((s, c) => s + c.volume, 0) / 5;
+      const avgVol20 = candles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+      const vRatio   = avgVol5 / (avgVol20 || 1);
+      if (vRatio > 1.5) {
+        if (currBull) { bullScore += 1.5; signals.push('VOL SURGE BULL x' + vRatio.toFixed(1)); }
+        else          { bearScore += 1.5; signals.push('VOL SURGE BEAR x' + vRatio.toFixed(1)); }
+      } else if (vRatio > 1.2) {
+        if (currBull) bullScore += 0.5; else bearScore += 0.5;
+      } else if (vRatio < 0.6) { signals.push('VOL DRY x' + vRatio.toFixed(1)); }
+
+      // Volume climax = exhaustion
+      if (curr.volume / (avgVol20 || 1) > 3) {
+        if (currBull) { bearScore += 1; signals.push('VOL CLIMAX→FADE'); }
+        else          { bullScore += 1; signals.push('VOL CLIMAX→FADE'); }
+      }
+
+      // ─── A8. WEIGHTED MOMENTUM (last 3 candle returns) ───────────────────
+      const r1 = (candles[last].close     - candles[last-1].close) / candles[last-1].close * 100;
+      const r2 = (candles[last-1].close   - candles[last-2].close) / candles[last-2].close * 100;
+      const r3 = (candles[last-2].close   - candles[last-3].close) / candles[last-3].close * 100;
+      const wm = (r1 * 3 + r2 * 2 + r3) / 6;
+      if (wm > 0.04)       { bullScore += 1.5; signals.push('WGT MOM +' + wm.toFixed(3) + '%'); }
+      else if (wm < -0.04) { bearScore += 1.5; signals.push('WGT MOM ' + wm.toFixed(3) + '%'); }
+      else if (wm > 0.01)  { bullScore += 0.5; }
+      else if (wm < -0.01) { bearScore += 0.5; }
+
+      // ─── A9. MOMENTUM DIVERGENCE ─────────────────────────────────────────
+      if (candles[last].high > candles[last-3].high && candles[last].close < candles[last-3].close)
+        { bearScore += 1.5; signals.push('BEAR DIVERGE'); }
+      if (candles[last].low < candles[last-3].low && candles[last].close > candles[last-3].close)
+        { bullScore += 1.5; signals.push('BULL DIVERGE'); }
+
+      // ─── A10. SPEED — is the move accelerating? ──────────────────────────
+      const sp1  = Math.abs(candles[last].close   - candles[last-1].close);
+      const sp23 = (Math.abs(candles[last-1].close - candles[last-2].close) +
+                    Math.abs(candles[last-2].close - candles[last-3].close)) / 2;
+      const accel = sp1 - sp23;
+      if (accel > 0 && currBull)  { bullScore += 0.5; signals.push('ACCEL↑'); }
+      if (accel > 0 && !currBull) { bearScore += 0.5; signals.push('ACCEL↓'); }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // SECTION B — LIVE INDICATOR SIGNALS
+    // ═══════════════════════════════════════════════════════════════
+
+    // B1. Polymarket smart money
     if (state.upPct && state.downPct) {
-      const up = parseFloat(state.upPct);
-      const down = parseFloat(state.downPct);
-      if (up > 65) {
-        bullScore += 3;
-        signals.push('MARKET STRONG UP ' + up + '%');
-      } else if (down > 65) {
-        bearScore += 3;
-        signals.push('MARKET STRONG DOWN ' + down + '%');
-      } else if (up > 55) {
-        bullScore += 1.5;
-        signals.push('MARKET LEAN UP ' + up + '%');
-      } else if (down > 55) {
-        bearScore += 1.5;
-        signals.push('MARKET LEAN DOWN ' + down + '%');
+      const up = parseFloat(state.upPct), dn = parseFloat(state.downPct);
+      if (up > 65)       { bullScore += 3;   signals.push('MKT STRONG UP ' + up + '%'); }
+      else if (dn > 65)  { bearScore += 3;   signals.push('MKT STRONG DOWN ' + dn + '%'); }
+      else if (up > 55)  { bullScore += 1.5; signals.push('MKT LEAN UP ' + up + '%'); }
+      else if (dn > 55)  { bearScore += 1.5; signals.push('MKT LEAN DOWN ' + dn + '%'); }
+      else               { signals.push('MKT SPLIT ' + up + '/' + dn); }
+    }
+
+    // B2. PTB distance + momentum
+    if (price && ptb && ta) {
+      const diff = price - ptb, pct = (diff / ptb) * 100, above = diff > 0;
+      if (Math.abs(pct) > 0.1)       { if (above) { bullScore += 5; signals.push('PTB +' + pct.toFixed(3) + '% SAFE'); } else { bearScore += 5; signals.push('PTB ' + pct.toFixed(3) + '% SAFE'); } }
+      else if (Math.abs(pct) > 0.03) { if (above) { bullScore += 3; signals.push('PTB +' + pct.toFixed(3) + '%'); } else { bearScore += 3; signals.push('PTB ' + pct.toFixed(3) + '%'); } }
+      else if (Math.abs(pct) > 0.01) { if (above) { bullScore += 1; signals.push('PTB +' + pct.toFixed(3) + '% THIN'); } else { bearScore += 1; signals.push('PTB ' + pct.toFixed(3) + '% THIN'); } }
+      else { signals.push('PTB FLAT'); }
+      if (above) {
+        if (ta.rsiDelta < 0 || ta.macdHistDelta < 0 || ta.ema9Slope < 0) { bearScore += 2; signals.push('ABOVE PTB FADING'); }
+        else { bullScore += Math.min(pct * 5, 2); signals.push('ABOVE PTB STRONG'); }
       } else {
-        signals.push('MARKET SPLIT ' + up + '/' + down);
+        if (ta.rsiDelta > 0 || ta.macdHistDelta > 0 || ta.ema9Slope > 0) { bullScore += 2; signals.push('BELOW PTB RECOVERING'); }
+        else { bearScore += Math.min(Math.abs(pct) * 5, 2); signals.push('BELOW PTB WEAK'); }
       }
     }
 
-    // ═══ 2. MEAN-REVERSION — Key insight for 5m predictions ═══
-    // Price above PTB with fading momentum → likely DOWN
-    // Price below PTB with selling exhausted → likely UP
-    if (state.btcPrice && state.priceToBeat && ta) {
-      const diff = state.btcPrice - state.priceToBeat;
-      const pctDiff = (diff / state.priceToBeat) * 100;
-      const abovePTB = diff > 0;
-
-      if (abovePTB) {
-        // Above PTB — check if momentum is fading
-        const momentumFading = (ta.rsiDelta < 0) || (ta.macdHistDelta < 0) || (ta.ema9Slope < 0);
-        const recentBearish = ta.recentBearCandles >= 2;
-
-        if (momentumFading || recentBearish) {
-          // Price pumped but losing steam → DOWN
-          bearScore += 2;
-          signals.push('ABOVE PTB +' + pctDiff.toFixed(3) + '% FADING');
-        } else {
-          // Strong continued momentum above PTB
-          bullScore += Math.min(pctDiff * 5, 2);
-          signals.push('ABOVE PTB +' + pctDiff.toFixed(3) + '% STRONG');
-        }
-      } else {
-        // Below PTB — check if selling is exhausted
-        const sellingExhausted = (ta.rsiDelta > 0) || (ta.macdHistDelta > 0) || (ta.ema9Slope > 0);
-        const recentBullish = ta.recentBullCandles >= 2;
-
-        if (sellingExhausted || recentBullish) {
-          // Price dipped but recovering → UP
-          bullScore += 2;
-          signals.push('BELOW PTB ' + pctDiff.toFixed(3) + '% RECOVERING');
-        } else {
-          // Continued selling pressure
-          bearScore += Math.min(Math.abs(pctDiff) * 5, 2);
-          signals.push('BELOW PTB ' + pctDiff.toFixed(3) + '% WEAK');
-        }
-      }
-    }
-
-    // ═══ 3. VWAP POSITION — Most reliable 5m indicator ═══
+    // B3. VWAP
     if (ta && ta.vwapDist != null) {
-      if (ta.vwapDist > 0.05) {
-        bullScore += 1.5;
-        signals.push('VWAP +' + ta.vwapDist.toFixed(3) + '%');
-      } else if (ta.vwapDist < -0.05) {
-        bearScore += 1.5;
-        signals.push('VWAP ' + ta.vwapDist.toFixed(3) + '%');
-      }
+      if (ta.vwapDist > 0.05)       { bullScore += 1.5; signals.push('VWAP +' + ta.vwapDist.toFixed(3) + '%'); }
+      else if (ta.vwapDist < -0.05) { bearScore += 1.5; signals.push('VWAP ' + ta.vwapDist.toFixed(3) + '%'); }
     }
 
-    // ═══ 4. EMA ALIGNMENT — Trend confirmation ═══
+    // B4. EMA
     if (ta && ta.emaAligned) {
-      if (ta.emaAligned === 'BULLISH') {
-        bullScore += 1;
-        signals.push('EMA BULL');
-      } else if (ta.emaAligned === 'BEARISH') {
-        bearScore += 1;
-        signals.push('EMA BEAR');
-      } else {
-        signals.push('EMA MIX');
-      }
+      if (ta.emaAligned === 'BULLISH')      { bullScore += 1;   signals.push('EMA BULL'); }
+      else if (ta.emaAligned === 'BEARISH') { bearScore += 1;   signals.push('EMA BEAR'); }
+      if (ta.ema9Slope > 0.01)       { bullScore += 0.5; signals.push('EMA9↑'); }
+      else if (ta.ema9Slope < -0.01) { bearScore += 0.5; signals.push('EMA9↓'); }
     }
 
-    // ═══ 5. RSI — Extremes matter most, direction matters ═══
+    // B5. RSI
     if (ta && ta.rsi != null) {
-      if (ta.rsi > 70) {
-        // Overbought — mean-revert down
-        bearScore += 2;
-        signals.push('RSI ' + ta.rsi.toFixed(1) + ' OB');
-      } else if (ta.rsi < 30) {
-        // Oversold — mean-revert up
-        bullScore += 2;
-        signals.push('RSI ' + ta.rsi.toFixed(1) + ' OS');
-      } else {
-        // Mid-range: RSI direction matters more than value
-        if (ta.rsiDelta > 2) {
-          bullScore += 0.5;
-          signals.push('RSI RISING');
-        } else if (ta.rsiDelta < -2) {
-          bearScore += 0.5;
-          signals.push('RSI FALLING');
-        }
-      }
+      if (ta.rsi > 70)           { bearScore += 2;   signals.push('RSI OB ' + ta.rsi.toFixed(1)); }
+      else if (ta.rsi < 30)      { bullScore += 2;   signals.push('RSI OS ' + ta.rsi.toFixed(1)); }
+      else if (ta.rsiDelta > 2)  { bullScore += 0.5; signals.push('RSI↑'); }
+      else if (ta.rsiDelta < -2) { bearScore += 0.5; signals.push('RSI↓'); }
     }
 
-    // ═══ 6. MACD — Crossings and histogram direction ═══
+    // B6. MACD
     if (ta && ta.macdHist != null) {
       if (ta.macdCrossing) {
-        // Fresh cross = strong signal
         if (ta.macdHist > 0) { bullScore += 1.5; signals.push('MACD BULL X'); }
-        else { bearScore += 1.5; signals.push('MACD BEAR X'); }
+        else                 { bearScore += 1.5; signals.push('MACD BEAR X'); }
       } else {
-        // Histogram expanding vs contracting
-        if (ta.macdHist > 0 && ta.macdHistDelta > 0) {
-          bullScore += 0.5;
-          signals.push('MACD EXPANDING');
-        } else if (ta.macdHist < 0 && ta.macdHistDelta < 0) {
-          bearScore += 0.5;
-          signals.push('MACD EXPANDING BEAR');
-        } else if (ta.macdHist > 0 && ta.macdHistDelta < 0) {
-          bearScore += 0.5;
-          signals.push('MACD FADING');
-        } else if (ta.macdHist < 0 && ta.macdHistDelta > 0) {
-          bullScore += 0.5;
-          signals.push('MACD RECOVERING');
-        }
+        if      (ta.macdHist > 0 && ta.macdHistDelta > 0) { bullScore += 0.5; signals.push('MACD EXPAND'); }
+        else if (ta.macdHist < 0 && ta.macdHistDelta < 0) { bearScore += 0.5; signals.push('MACD BEAR EXP'); }
+        else if (ta.macdHist > 0 && ta.macdHistDelta < 0) { bearScore += 0.5; signals.push('MACD FADING'); }
+        else if (ta.macdHist < 0 && ta.macdHistDelta > 0) { bullScore += 0.5; signals.push('MACD RECOVER'); }
       }
     }
 
-    // ═══ 7. VOLUME — Confirms or fades moves ═══
+    // B7. Volume z-score
     if (ta && ta.volZScore != null) {
       if (ta.volZScore > 2) {
-        // High volume confirms the current direction
-        if (ta.ret1 > 0) bullScore += 1;
-        else bearScore += 1;
-        signals.push('VOL SPIKE z=' + ta.volZScore.toFixed(2));
+        if (ta.ret1 > 0) { bullScore += 1; signals.push('VOL SPIKE BULL'); }
+        else             { bearScore += 1; signals.push('VOL SPIKE BEAR'); }
       } else if (ta.volZScore < -1) {
-        // Low volume = low conviction, fade the move
-        if (state.btcPrice > state.priceToBeat) bearScore += 0.5;
-        else bullScore += 0.5;
-        signals.push('VOL DRY — FADE');
+        if (price > ptb) bearScore += 0.5; else bullScore += 0.5;
+        signals.push('VOL DRY FADE');
       }
     }
 
-    // ═══ 8. RECENT CANDLE PATTERN ═══
-    if (ta) {
-      if (ta.recentBullCandles === 3) {
-        bullScore += 0.5;
-        signals.push('3 BULL CANDLES');
-      } else if (ta.recentBearCandles === 3) {
-        bearScore += 0.5;
-        signals.push('3 BEAR CANDLES');
-      }
-    }
-
-    // ═══ 9. MOMENTUM DIRECTION (short-term returns) ═══
+    // B8. Short-term momentum
     if (ta && ta.ret3 != null) {
-      if (ta.ret3 > 0.1) {
-        bullScore += 0.5;
-      } else if (ta.ret3 < -0.1) {
-        bearScore += 0.5;
-      }
+      if (ta.ret3 > 0.1)       { bullScore += 0.5; signals.push('MOM +' + ta.ret3.toFixed(3) + '%'); }
+      else if (ta.ret3 < -0.1) { bearScore += 0.5; signals.push('MOM ' + ta.ret3.toFixed(3) + '%'); }
     }
 
-    // ═══ FINAL DECISION ═══
-    // Ties go to market odds direction, not defaulting to UP
+    // ═══════════════════════════════════════════════════════════════
+    // FINAL DECISION
+    // ═══════════════════════════════════════════════════════════════
+
     const totalScore = bullScore + bearScore;
+    const margin     = Math.abs(bullScore - bearScore);
+    const confPct    = totalScore > 0 ? (Math.max(bullScore, bearScore) / totalScore * 100) : 50;
+
     let isUp;
     if (bullScore === bearScore) {
-      // Tiebreaker: use market odds
-      const up = parseFloat(state.upPct || 50);
-      const down = parseFloat(state.downPct || 50);
-      isUp = up >= down;
-      signals.push('TIE — MARKET DECIDES');
+      isUp = parseFloat(state.upPct || 50) >= 50;
+      signals.push('TIE → MARKET DECIDES');
     } else {
       isUp = bullScore > bearScore;
     }
-    const margin = Math.abs(bullScore - bearScore);
-    const confPct = totalScore > 0 ? (Math.max(bullScore, bearScore) / totalScore * 100) : 50;
 
     let confLevel, confLabel;
-    if (margin >= 3) { confLevel = 'high'; confLabel = 'HIGH'; }
-    else if (margin >= 1) { confLevel = 'medium'; confLabel = 'MED'; }
-    else { confLevel = 'low'; confLabel = 'LOW'; }
+    if (margin >= 5)      { confLevel = 'high';   confLabel = 'HIGH'; }
+    else if (margin >= 2) { confLevel = 'medium'; confLabel = 'MED'; }
+    else                  { confLevel = 'low';    confLabel = 'LOW'; }
 
-    // Update UI
     els.finalPred.style.display = 'block';
-    els.finalPred.className = 'agent-final-pred pred-' + (isUp ? 'up' : 'down');
-    if (els.finalIcon) els.finalIcon.textContent = isUp ? '🟢' : '🔴';
-    if (els.finalCall) els.finalCall.textContent = isUp ? 'UP' : 'DOWN';
+    els.finalPred.className     = 'agent-final-pred pred-' + (isUp ? 'up' : 'down');
+    if (els.finalIcon)    els.finalIcon.textContent    = isUp ? '🟢' : '🔴';
+    if (els.finalCall)    els.finalCall.textContent    = isUp ? 'UP' : 'DOWN';
     if (els.finalConf) {
       els.finalConf.textContent = confLabel + ' ' + confPct.toFixed(0) + '%';
-      els.finalConf.className = 'agent-final-conf ' + confLevel;
+      els.finalConf.className   = 'agent-final-conf ' + confLevel;
     }
-    if (els.finalStatus) els.finalStatus.textContent = 'LOCKED IN';
-    if (els.finalPrice) els.finalPrice.textContent = state.btcPrice ? formatPrice(state.btcPrice) : '--';
+    if (els.finalStatus)  els.finalStatus.textContent  = 'LOCKED IN';
+    if (els.finalPrice)   els.finalPrice.textContent   = price ? formatPrice(price) : '--';
     if (els.finalSignals) els.finalSignals.textContent = signals.join(' · ');
 
-    // Store for saving at window end
     finalPredDirection = isUp ? 'up' : 'down';
-    finalPredPTB = state.priceToBeat;
+    finalPredPTB       = ptb;
+    finalPredLocked    = true;
 
-    console.log('[AGENT] FINAL PREDICTION: ' + (isUp ? 'UP' : 'DOWN') +
-      ' | Conf: ' + confLabel + ' ' + confPct.toFixed(1) + '%' +
-      ' | Bull: ' + bullScore.toFixed(1) + ' Bear: ' + bearScore.toFixed(1));
+    console.log('[AGENT] FINAL: ' + (isUp ? 'UP' : 'DOWN') +
+      ' | ' + confLabel + ' ' + confPct.toFixed(1) + '%' +
+      ' | Bull:' + bullScore.toFixed(1) + ' Bear:' + bearScore.toFixed(1) +
+      '\n[AGENT] ' + signals.join(' · '));
   }
+
 
   // ═══════════════════════════════════════════
   // FETCH LIVE PREDICTION FROM BOT (single source of truth)
@@ -1631,26 +1551,26 @@
       finalPredPTB = null;
       if (els.finalPred) els.finalPred.style.display = 'none';
 
-      // Trigger refresh for new window data (guard prevents concurrent runs)
+      // Trigger refresh for new window data
       setTimeout(refresh, 500);
     }
 
-    // Show analyzing at 3-min mark (<=180s) and show final vote at 2-min mark (<=120s)
-    if (left > 180) {
-      // More than 3 minutes left: hide both
+    // Analyzing at 1:00 into window (4:00 left), final vote at 1:30 into window (3:30 left)
+    if (left > 240) {
+      // Less than 1 minute into window: hide both
       if (els.finalPred) els.finalPred.style.display = 'none';
       if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
       finalPredLocked = false;
-    } else if (left > 120 && left <= 180) {
-      // Between 3 and 2 minutes remaining: show analyzing
+    } else if (left > 210 && left <= 240) {
+      // 1:00–1:30 into window: show analyzing spinner
       if (els.finalPred) els.finalPred.style.display = 'none';
       if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'flex';
       finalPredLocked = false;
     } else {
-      // 2 minutes or less: fetch and show the bot's final prediction
+      // 1:30+ into window (3:30 or less remaining): fire and lock prediction
       if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
       if (!finalPredLocked) {
-        fetchLivePrediction();
+        analyzeFinalPrediction(window._lastCandles || null);
       }
     }
   }
@@ -1691,6 +1611,7 @@
       try {
         const ta = computeTA(candles);
         updateTAUI(ta);
+        window._lastCandles = candles; // store for final prediction
       } catch (e) { console.error('[AGENT] TA error:', e); }
 
       // Chart — re-render with latest PTB (price points fed by WebSocket)
@@ -1782,19 +1703,6 @@
     if (!els.btcPrice) return;
 
     console.log('[AGENT] Initializing Vanguard Agent dashboard...');
-
-    // ── Access Gate check ──
-    if (!isUnlocked()) {
-      showAccessGate();
-      return; // Don't start data feeds until unlocked
-    }
-
-    // Already unlocked — start normally
-    unlockUI();
-    startAgent();
-  }
-
-  function startAgent() {
     setStatus('connecting', 'CONNECTING...');
     setWsIndicator('reconnecting', 'CONNECTING');
     loadChartHistory();
