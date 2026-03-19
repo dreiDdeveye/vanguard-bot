@@ -15,6 +15,165 @@
     'Content-Type': 'application/json',
   };
 
+  // ═══════════════════════════════════════════
+  // ACCESS GATE
+  // ═══════════════════════════════════════════
+
+  const ACCESS_LS_KEY = 'vg_access_code';
+
+  function isUnlocked() {
+    try { return !!localStorage.getItem(ACCESS_LS_KEY); } catch(e) { return false; }
+  }
+
+  function generateRandomCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const seg = (n) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    return 'VG-' + seg(4) + '-' + seg(4);
+  }
+
+  async function generateCode() {
+    const btn = document.getElementById('agentGenCodeBtn');
+    const display = document.getElementById('agentCodeDisplay');
+    const codeEl = document.getElementById('agentCodeValue');
+    const msg = document.getElementById('agentAccessMsg');
+
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    setAccessMsg('info', 'Creating your code...');
+
+    const code = generateRandomCode();
+
+    try {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/access_codes', {
+        method: 'POST',
+        headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ code: code, claimed: false }),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt);
+      }
+
+      codeEl.textContent = code;
+      display.classList.add('visible');
+      setAccessMsg('info', 'Enter the code above to unlock access.');
+
+      // Auto-fill the input
+      const input = document.getElementById('agentCodeInput');
+      if (input) input.value = code;
+
+    } catch (e) {
+      setAccessMsg('error', 'Failed to generate code. Try again.');
+      console.error('[AGENT] Generate code error:', e);
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Generate New Code';
+  }
+
+  async function claimCode(code) {
+    const msg = document.getElementById('agentAccessMsg');
+    const unlockBtn = document.getElementById('agentUnlockBtn');
+
+    if (!code || code.trim() === '') {
+      setAccessMsg('error', 'Please enter a code.');
+      return;
+    }
+
+    unlockBtn.disabled = true;
+    setAccessMsg('info', 'Verifying...');
+
+    try {
+      // Check if code exists and is unclaimed
+      const res = await fetch(
+        SUPABASE_URL + '/rest/v1/access_codes?code=eq.' + encodeURIComponent(code.trim().toUpperCase()) + '&claimed=eq.false',
+        { headers: SB_HEADERS }
+      );
+
+      if (!res.ok) throw new Error('Fetch failed');
+      const data = await res.json();
+
+      if (!data || data.length === 0) {
+        setAccessMsg('error', 'Invalid or already used code. Generate a new one.');
+        unlockBtn.disabled = false;
+        return;
+      }
+
+      // Claim the code
+      const claimRes = await fetch(
+        SUPABASE_URL + '/rest/v1/access_codes?code=eq.' + encodeURIComponent(code.trim().toUpperCase()),
+        {
+          method: 'PATCH',
+          headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ claimed: true, claimed_at: new Date().toISOString() }),
+        }
+      );
+
+      if (!claimRes.ok) throw new Error('Claim failed');
+
+      // Save to localStorage — this browser is now unlocked
+      try { localStorage.setItem(ACCESS_LS_KEY, code.trim().toUpperCase()); } catch(e) {}
+
+      setAccessMsg('success', 'Access granted! Loading...');
+      setTimeout(unlockUI, 600);
+
+    } catch (e) {
+      setAccessMsg('error', 'Error verifying code. Try again.');
+      console.error('[AGENT] Claim code error:', e);
+      unlockBtn.disabled = false;
+    }
+  }
+
+  function setAccessMsg(type, text) {
+    const msg = document.getElementById('agentAccessMsg');
+    if (!msg) return;
+    msg.className = 'agent-access-msg ' + type;
+    msg.textContent = text;
+  }
+
+  function unlockUI() {
+    const gate = document.getElementById('agentAccessGate');
+    const wrap = document.getElementById('agentContentWrap');
+    if (gate) gate.classList.remove('visible');
+    if (wrap) wrap.classList.remove('locked');
+    // Start agent data feeds now that access is granted
+    if (typeof startAgent === 'function') startAgent();
+  }
+
+  function showAccessGate() {
+    const gate = document.getElementById('agentAccessGate');
+    const wrap = document.getElementById('agentContentWrap');
+    if (gate) gate.classList.add('visible');
+    if (wrap) wrap.classList.add('locked');
+
+    // Wire up buttons
+    const genBtn = document.getElementById('agentGenCodeBtn');
+    const unlockBtn = document.getElementById('agentUnlockBtn');
+    const copyBtn = document.getElementById('agentCopyCodeBtn');
+    const input = document.getElementById('agentCodeInput');
+
+    if (genBtn) genBtn.addEventListener('click', generateCode);
+    if (unlockBtn) unlockBtn.addEventListener('click', function() {
+      const code = input ? input.value : '';
+      claimCode(code);
+    });
+    if (input) input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') claimCode(input.value);
+    });
+    if (copyBtn) copyBtn.addEventListener('click', function() {
+      const val = document.getElementById('agentCodeValue');
+      if (val && val.textContent) {
+        navigator.clipboard.writeText(val.textContent).then(function() {
+          copyBtn.textContent = '✓';
+          setTimeout(function() { copyBtn.textContent = '⧉'; }, 1500);
+        });
+      }
+    });
+  }
+
+  // Check access on init — if already unlocked, skip gate entirely
+
   // ── State ──
   const state = {
     btcPrice: null,
@@ -1623,6 +1782,19 @@
     if (!els.btcPrice) return;
 
     console.log('[AGENT] Initializing Vanguard Agent dashboard...');
+
+    // ── Access Gate check ──
+    if (!isUnlocked()) {
+      showAccessGate();
+      return; // Don't start data feeds until unlocked
+    }
+
+    // Already unlocked — start normally
+    unlockUI();
+    startAgent();
+  }
+
+  function startAgent() {
     setStatus('connecting', 'CONNECTING...');
     setWsIndicator('reconnecting', 'CONNECTING');
     loadChartHistory();

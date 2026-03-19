@@ -15,6 +15,10 @@ const SB_HEADERS = {
   'Content-Type': 'application/json',
 };
 
+// ── Discord ──
+// Set DISCORD_WEBHOOK_URL in your Render environment variables
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || null;
+
 // ── State ──
 const state = {
   btcPrice: null,
@@ -377,8 +381,6 @@ function analyzeTickMomentum() {
   }
 
   // Acceleration: is the 10s slope stronger than the 30s slope?
-  // If slope10 > slope30 in same direction = accelerating
-  // If slope10 opposes slope30 = decelerating/reversing
   const accelerating = Math.sign(slope10) === Math.sign(slope30) && Math.abs(slope10) > Math.abs(slope30) * 0.5;
   const reversing = Math.sign(slope10) !== Math.sign(slope60) && Math.abs(slope10) > 0.002;
 
@@ -595,6 +597,10 @@ async function savePrediction(windowStart, ptb, endPrice, predictedOver) {
       const total = state.wins + state.losses;
       const wr = total > 0 ? ((state.wins / total) * 100).toFixed(1) : '0';
       console.log(`[BOT] ${result} | Predicted ${predictedOver ? 'UP' : 'DOWN'} | PTB $${ptb.toFixed(2)} → End $${endPrice.toFixed(2)} | W:${state.wins} L:${state.losses} WR:${wr}%`);
+
+      // Send result to Discord
+      await discordResult(correct, predictedOver, ptb, endPrice);
+
       try {
         await savePredictionStats(state.wins, state.losses);
       } catch (e) {
@@ -670,6 +676,141 @@ async function savePredictionStats(wins, losses) {
   } catch (e) {
     throw e;
   }
+}
+
+// ═══════════════════════════════════════════
+// DISCORD NOTIFICATIONS
+// ═══════════════════════════════════════════
+
+async function sendDiscord(payload) {
+  if (!DISCORD_WEBHOOK_URL) return;
+  try {
+    await fetch(DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    console.error('[BOT] Discord send error:', e.message);
+  }
+}
+
+async function discordPrediction(direction, confLabel, confPct, bullScore, bearScore, signals) {
+  const isUp = direction === 'up';
+  const emoji = isUp ? '🟢' : '🔴';
+  const arrow = isUp ? '⬆️  UP' : '⬇️  DOWN';
+  const confEmoji = confLabel === 'HIGH' ? '🔥' : confLabel === 'MED' ? '⚡' : '🌀';
+  const color = isUp ? 0x00c853 : 0xff1744;
+
+  const windowTime = new Date(state.currentWindowStart * 1000).toLocaleTimeString('en-US', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  });
+
+  const total = state.wins + state.losses;
+  const wr = total > 0 ? ((state.wins / total) * 100).toFixed(1) : '0';
+
+  await sendDiscord({
+    username: 'Vanguard Bot',
+    avatar_url: 'https://i.imgur.com/AfFp7pu.png',
+    embeds: [{
+      title: `${emoji}  BTC 5m Call — ${arrow}`,
+      color,
+      fields: [
+        {
+          name: '📍 Price to Beat',
+          value: `**$${state.priceToBeat ? state.priceToBeat.toFixed(2) : '--'}**`,
+          inline: true,
+        },
+        {
+          name: '💰 Current BTC',
+          value: `**$${state.btcPrice ? state.btcPrice.toFixed(2) : '--'}**`,
+          inline: true,
+        },
+        {
+          name: '\u200b',
+          value: '\u200b',
+          inline: true,
+        },
+        {
+          name: `${confEmoji} Confidence`,
+          value: `**${confLabel}** (${confPct.toFixed(0)}%)`,
+          inline: true,
+        },
+        {
+          name: '📊 Scores',
+          value: `🐂 Bull: \`${bullScore.toFixed(1)}\`  🐻 Bear: \`${bearScore.toFixed(1)}\``,
+          inline: true,
+        },
+        {
+          name: '\u200b',
+          value: '\u200b',
+          inline: true,
+        },
+        {
+          name: '📈 Market Odds',
+          value: `Up: **${state.upPct || '--'}%** | Down: **${state.downPct || '--'}%**`,
+          inline: true,
+        },
+        {
+          name: '🏆 Record',
+          value: `${state.wins}W / ${state.losses}L  (${wr}% WR)`,
+          inline: true,
+        },
+        {
+          name: '🔍 Signals',
+          value: signals ? `\`${signals}\`` : '--',
+          inline: false,
+        },
+      ],
+      footer: { text: `Window: ${windowTime}  •  Vanguard Prediction Bot` },
+      timestamp: new Date().toISOString(),
+    }],
+  });
+}
+
+async function discordResult(correct, predictedOver, ptb, endPrice) {
+  const resultEmoji = correct ? '✅' : '❌';
+  const resultText = correct ? 'WIN' : 'LOSS';
+  const color = correct ? 0x00e676 : 0xff5252;
+  const predLabel = predictedOver ? '⬆️ UP' : '⬇️ DOWN';
+  const actual = endPrice > ptb ? '⬆️ went UP' : '⬇️ went DOWN';
+
+  const total = state.wins + state.losses;
+  const wr = total > 0 ? ((state.wins / total) * 100).toFixed(1) : '0';
+
+  await sendDiscord({
+    username: 'Vanguard Bot',
+    avatar_url: 'https://i.imgur.com/AfFp7pu.png',
+    embeds: [{
+      title: `${resultEmoji}  ${resultText} — Predicted ${predLabel}`,
+      color,
+      description: `BTC **${actual}** from PTB`,
+      fields: [
+        {
+          name: '📍 PTB',
+          value: `$${ptb.toFixed(2)}`,
+          inline: true,
+        },
+        {
+          name: '🏁 End Price',
+          value: `$${endPrice.toFixed(2)}`,
+          inline: true,
+        },
+        {
+          name: '📉 Delta',
+          value: `${endPrice > ptb ? '+' : ''}${(endPrice - ptb).toFixed(2)}`,
+          inline: true,
+        },
+        {
+          name: '🏆 Updated Record',
+          value: `**${state.wins}W / ${state.losses}L** — ${wr}% WR`,
+          inline: false,
+        },
+      ],
+      footer: { text: 'Vanguard Prediction Bot' },
+      timestamp: new Date().toISOString(),
+    }],
+  });
 }
 
 // ═══════════════════════════════════════════
@@ -815,13 +956,17 @@ async function makePrediction() {
   state.predictionPTB = ptb;
   state.predictionMade = true;
 
+  const signalsText = signals.join(' · ');
   console.log(`[BOT] PREDICTION: ${isUp ? 'UP' : 'DOWN'} | ${confLabel} ${confPct.toFixed(0)}% | Bull:${bullScore.toFixed(1)} Bear:${bearScore.toFixed(1)} | PTB:${pctDiff.toFixed(3)}%`);
-  console.log(`[BOT] Signals: ${signals.join(' · ')}`);
+  console.log(`[BOT] Signals: ${signalsText}`);
 
   await publishLivePrediction({
     direction: isUp ? 'up' : 'down', ptb, btcPrice: price, confidence: confLabel, confPct, bullScore, bearScore,
-    signalsText: signals.join(' · '),
+    signalsText,
   });
+
+  // Send prediction to Discord
+  await discordPrediction(isUp ? 'up' : 'down', confLabel, confPct, bullScore, bearScore, signalsText);
 }
 
 // ═══════════════════════════════════════════
