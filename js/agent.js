@@ -491,6 +491,7 @@
   function computeTrackRecord(predictions) {
     let wins = 0, losses = 0;
     for (const p of predictions) {
+      if (p.source === 'vanguard-skip') continue; // skip NO TRADE entries
       if (p.ptb == null || p.end_price == null || p.over == null) continue;
       if (p.over) wins++;
       else losses++;
@@ -806,9 +807,26 @@
     var frag = document.createDocumentFragment();
     for (var i = 0; i < predictions.length; i++) {
       var p = predictions[i];
-      if (!p.ts || p.ptb == null || p.end_price == null) continue;
+      if (!p.ts) continue;
 
       var time = new Date(p.ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      var row = document.createElement('div');
+
+      // ── SKIP row ──
+      if (p.source === 'vanguard-skip' || p.over == null) {
+        row.className = 'agent-history-item skip';
+        row.innerHTML =
+          '<span class="agent-history-time">' + time + '</span>' +
+          '<span class="agent-history-ptb">' + (p.ptb ? formatPrice(p.ptb) : '--') + '</span>' +
+          '<span class="agent-history-dir" style="color:rgba(168,184,176,0.5)">--</span>' +
+          '<span class="agent-history-end">--</span>' +
+          '<span class="agent-history-result skip">SKIP</span>';
+        frag.appendChild(row);
+        continue;
+      }
+
+      if (p.ptb == null || p.end_price == null) continue;
+
       var ptb = formatPrice(p.ptb);
       var end = formatPrice(p.end_price);
 
@@ -820,7 +838,6 @@
       var result = correct ? 'WIN' : 'LOSS';
       var resultClass = correct ? 'win' : 'loss';
 
-      var row = document.createElement('div');
       row.className = 'agent-history-item';
       row.innerHTML =
         '<span class="agent-history-time">' + time + '</span>' +
@@ -843,7 +860,7 @@
   function updateHistoryStatsUI(predictions) {
     if (!predictions) return;
     // normalize and sort ascending by ts
-    const arr = predictions.slice().filter(p => p && (p.over === true || p.over === false || p.over === 'true' || p.over === 'false' || p.over === '1' || p.over === '0')).map(p => ({ ts: Number(p.ts), over: (p.over === true || p.over === 'true' || p.over === 't' || p.over === 1 || p.over === '1') })).sort((a,b)=>a.ts - b.ts);
+    const arr = predictions.slice().filter(p => p && p.source !== 'vanguard-skip' && (p.over === true || p.over === false || p.over === 'true' || p.over === 'false' || p.over === '1' || p.over === '0')).map(p => ({ ts: Number(p.ts), over: (p.over === true || p.over === 'true' || p.over === 't' || p.over === 1 || p.over === '1') })).sort((a,b)=>a.ts - b.ts);
     if (arr.length === 0) return;
     // compute overall longest win/loss streaks
     let maxWin = 0, maxLoss = 0, cur = 0, curType = null;
@@ -873,6 +890,7 @@
 
     let tp = 0, tn = 0, fp = 0, fn = 0;
     for (const r of rows) {
+      if (r.source === 'vanguard-skip') continue; // exclude skips
       if (r.ptb == null || r.end_price == null) continue;
       const actualOver = r.end_price > r.ptb;
       const correct = !!r.over;
@@ -1638,6 +1656,33 @@
     if (els.finalPrice)   els.finalPrice.textContent   = state.btcPrice ? formatPrice(state.btcPrice) : '--';
     if (els.finalSignals) els.finalSignals.textContent = reason || 'No high-probability setup.';
     console.log('[AGENT] NO TRADE — ' + (condition || '') + ': ' + (reason || ''));
+
+    // Save skip to Supabase so it appears in history
+    saveSkip(condition, reason);
+  }
+
+  // ── Save a SKIP entry to Supabase predictions ──
+  async function saveSkip(condition, reason) {
+    const now = Math.floor(Date.now() / 1000);
+    const windowStart = Math.floor(now / 300) * 300;
+    const row = {
+      ts:        windowStart,
+      ptb:       state.priceToBeat || null,
+      end_price: null,
+      over:      null,
+      source:    'vanguard-skip',
+    };
+    try {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/predictions', {
+        method: 'POST',
+        headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify(row),
+      });
+      if (!res.ok) console.warn('[AGENT] Skip save failed:', res.status, await res.text());
+      else console.log('[AGENT] Skip saved for window', windowStart);
+    } catch (e) {
+      console.error('[AGENT] Skip save error:', e.message);
+    }
   }
 
 
@@ -1868,6 +1913,11 @@
   // ── Init ──
   function init() {
     if (!els.btcPrice) return;
+
+    // Inject SKIP row style
+    const skipStyle = document.createElement('style');
+    skipStyle.textContent = '.agent-history-result.skip { color: rgba(168,184,176,0.45); font-size: 0.72rem; letter-spacing: 0.08em; } .agent-history-item.skip { opacity: 0.55; }';
+    document.head.appendChild(skipStyle);
 
     console.log('[AGENT] Initializing Vanguard Agent dashboard...');
     setStatus('connecting', 'CONNECTING...');
