@@ -32,7 +32,303 @@
   <link rel="stylesheet" href="css/responsive.css?v=2" />
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
-    /* ── Vanguard Agent Access Gate ── */
+    /* ── Coming Soon Section ── */
+    .coming-soon-section {
+      padding: 120px 0 100px;
+      position: relative;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    .coming-soon-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(76, 201, 138, 0.03) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 50%, rgba(100, 160, 255, 0.03) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .coming-soon-header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .coming-soon-eyebrow {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 5px;
+      color: rgba(76, 201, 138, 0.7);
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .coming-soon-eyebrow::before,
+    .coming-soon-eyebrow::after {
+      content: '——';
+      margin: 0 10px;
+      opacity: 0.4;
+    }
+
+    .coming-soon-title {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 3.5vw, 42px);
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #ffffff;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      text-shadow: 0 0 30px rgba(76, 201, 138, 0.15);
+    }
+
+    .coming-soon-subtitle {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: rgba(200, 220, 210, 0.55);
+      letter-spacing: 0.5px;
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.8;
+    }
+
+    .coming-soon-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    .coming-soon-card {
+      position: relative;
+      background: rgba(10, 18, 14, 0.95);
+      border: 1px solid rgba(76, 201, 138, 0.1);
+      overflow: hidden;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.35s ease;
+    }
+
+    .coming-soon-card:hover {
+      transform: translateY(-6px);
+    }
+
+    .coming-soon-card:nth-child(1):hover { border-color: rgba(100, 160, 255, 0.3); }
+    .coming-soon-card:nth-child(2):hover { border-color: rgba(232, 197, 90, 0.3); }
+
+    /* HUD brackets */
+    .coming-soon-card::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: -1px;
+      width: 16px; height: 16px;
+      border-top: 1px solid rgba(76, 201, 138, 0.4);
+      border-left: 1px solid rgba(76, 201, 138, 0.4);
+      transition: transform 0.35s ease;
+      transform-origin: top left;
+    }
+    .coming-soon-card::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; right: -1px;
+      width: 16px; height: 16px;
+      border-bottom: 1px solid rgba(76, 201, 138, 0.4);
+      border-right: 1px solid rgba(76, 201, 138, 0.4);
+      transition: transform 0.35s ease;
+      transform-origin: bottom right;
+    }
+    .coming-soon-card:hover::before,
+    .coming-soon-card:hover::after { transform: scale(1.5); }
+
+    .cs-card-glow {
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: 0.06;
+      transition: opacity 0.35s ease;
+    }
+    .coming-soon-card:hover .cs-card-glow { opacity: 0.12; }
+    .cs-glow-blue  { background: radial-gradient(circle, #6490ff, transparent 70%); }
+    .cs-glow-amber { background: radial-gradient(circle, #e8c55a, transparent 70%); }
+
+    .cs-card-inner {
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cs-icon-wrap {
+      width: 52px; height: 52px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .cs-icon-blue  { background: rgba(100, 160, 255, 0.08); border: 1px solid rgba(100, 160, 255, 0.2); color: #6490ff; }
+    .cs-icon-amber { background: rgba(232, 197, 90,  0.08); border: 1px solid rgba(232, 197, 90,  0.2); color: #e8c55a; }
+
+    .cs-content { flex: 1; }
+
+    .cs-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 3px;
+      padding: 3px 10px;
+      background: rgba(76, 201, 138, 0.08);
+      border: 1px solid rgba(76, 201, 138, 0.2);
+      color: rgba(76, 201, 138, 0.8);
+      margin-bottom: 12px;
+    }
+    .cs-badge-amber {
+      background: rgba(232, 197, 90, 0.08);
+      border-color: rgba(232, 197, 90, 0.2);
+      color: rgba(232, 197, 90, 0.8);
+    }
+
+    .cs-title {
+      font-family: var(--font-display);
+      font-size: clamp(22px, 2.5vw, 28px);
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #ffffff;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .cs-desc {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: rgba(200, 220, 210, 0.6);
+      line-height: 1.8;
+      letter-spacing: 0.3px;
+      margin-bottom: 16px;
+    }
+
+    .cs-tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .cs-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      padding: 4px 10px;
+      background: rgba(100, 160, 255, 0.06);
+      border: 1px solid rgba(100, 160, 255, 0.15);
+      color: rgba(100, 160, 255, 0.7);
+    }
+    .cs-tag-amber {
+      background: rgba(232, 197, 90, 0.06);
+      border-color: rgba(232, 197, 90, 0.15);
+      color: rgba(232, 197, 90, 0.7);
+    }
+
+    .cs-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(76, 201, 138, 0.07);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: rgba(200, 220, 210, 0.35);
+      text-transform: uppercase;
+    }
+
+    .cs-status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(100, 160, 255, 0.5);
+      animation: dotPulse 2s ease-in-out infinite;
+    }
+    .cs-dot-amber {
+      background: rgba(232, 197, 90, 0.5);
+    }
+
+    .coming-soon-footer {
+      text-align: center;
+      padding: 28px 32px;
+      background: rgba(10, 18, 14, 0.8);
+      border: 1px solid rgba(76, 201, 138, 0.1);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: rgba(200, 220, 210, 0.5);
+      letter-spacing: 0.5px;
+    }
+
+    .cs-highlight {
+      color: rgba(76, 201, 138, 0.9);
+      cursor: pointer;
+      border-bottom: 1px solid rgba(76, 201, 138, 0.3);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .cs-highlight:hover { color: #4cc98a; border-color: #4cc98a; }
+
+    @media (max-width: 768px) {
+      .coming-soon-grid { grid-template-columns: 1fr; }
+      .cs-card-inner { padding: 24px 20px; }
+    }
+    .agent-tf-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .agent-tf-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(12, 20, 16, 0.9);
+      border: 1px solid rgba(76, 201, 138, 0.15);
+      color: rgba(200, 220, 210, 0.5);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    }
+
+    .agent-tf-tab:hover {
+      border-color: rgba(76, 201, 138, 0.35);
+      color: rgba(200, 220, 210, 0.8);
+      background: rgba(16, 28, 20, 0.95);
+    }
+
+    .agent-tf-tab.active {
+      background: rgba(76, 201, 138, 0.1);
+      border-color: rgba(76, 201, 138, 0.45);
+      color: #4cc98a;
+      box-shadow: 0 0 16px rgba(76, 201, 138, 0.08);
+    }
+
+    .tf-tab-label { letter-spacing: 0.14em; }
+
+    .tf-tab-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(76, 201, 138, 0.25);
+      transition: all 0.3s;
+    }
+
+    .agent-tf-tab.active .tf-tab-dot {
+      background: #4cc98a;
+      box-shadow: 0 0 6px rgba(76, 201, 138, 0.6);
+      animation: dotPulse 2s ease-in-out infinite;
+    }
     .stats { position: relative; }
 
     .agent-content-wrap {
@@ -712,7 +1008,23 @@
     </div>
     <div class="container">
       <h2 class="stats-title reveal-mask">Vanguard Agent</h2>
-      <p class="stats-subtitle">Live BTC 5-minute predictions powered by AI + on-chain data.</p>
+      <p class="stats-subtitle" id="agentSubtitle">Live BTC predictions powered by AI + on-chain data.</p>
+
+      <!-- Timeframe Tab Switcher -->
+      <div class="agent-tf-tabs" id="agentTfTabs">
+        <button class="agent-tf-tab active" data-tf="5m">
+          <span class="tf-tab-label">5 MIN</span>
+          <span class="tf-tab-dot" id="tfDot5m"></span>
+        </button>
+        <button class="agent-tf-tab" data-tf="15m">
+          <span class="tf-tab-label">15 MIN</span>
+          <span class="tf-tab-dot" id="tfDot15m"></span>
+        </button>
+        <button class="agent-tf-tab" data-tf="1h">
+          <span class="tf-tab-label">1 HOUR</span>
+          <span class="tf-tab-dot" id="tfDot1h"></span>
+        </button>
+      </div>
 
       <!-- Connection status -->
       <div class="agent-status-bar" id="agentStatusBar">
@@ -737,7 +1049,7 @@
         <span class="agent-model-label">MODEL</span>
         <span class="agent-model-name">Vanguard Neural Engine v1</span>
         <span class="agent-model-divider">|</span>
-        <span class="agent-model-detail">5-min BTC Prediction</span>
+        <span class="agent-model-detail" id="agentModelDetail">5-min BTC Prediction</span>
         <span class="agent-model-divider">|</span>
         <span class="agent-model-detail">Multi-Signal Fusion</span>
         <span class="agent-model-divider">|</span>
@@ -1008,6 +1320,83 @@
     </div>
   </section>
 
+  <!-- ── Coming Soon — Esports & Sports ── -->
+  <section class="coming-soon-section" id="coming-soon">
+    <div class="container">
+      <div class="coming-soon-header">
+        <span class="coming-soon-eyebrow">EXPANDING SOON</span>
+        <h2 class="coming-soon-title">More Markets Coming</h2>
+        <p class="coming-soon-subtitle">Vanguard is expanding beyond crypto. AI-powered predictions for the world's biggest competitions.</p>
+      </div>
+
+      <div class="coming-soon-grid">
+
+        <!-- Esports -->
+        <div class="coming-soon-card">
+          <div class="cs-card-glow cs-glow-blue"></div>
+          <div class="cs-card-inner">
+            <div class="cs-icon-wrap cs-icon-blue">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="6" width="20" height="12" rx="3"/>
+                <path d="M12 12h.01M8 12h.01M16 12h.01"/>
+                <path d="M7 9v6M10 12H7"/>
+              </svg>
+            </div>
+            <div class="cs-content">
+              <span class="cs-badge">COMING SOON</span>
+              <h3 class="cs-title">Esports</h3>
+              <p class="cs-desc">Live match predictions for CS2, Valorant, League of Legends, Dota 2 and more — powered by real-time odds and AI analysis.</p>
+              <div class="cs-tags">
+                <span class="cs-tag">CS2</span>
+                <span class="cs-tag">Valorant</span>
+                <span class="cs-tag">LoL</span>
+                <span class="cs-tag">Dota 2</span>
+              </div>
+            </div>
+            <div class="cs-status">
+              <div class="cs-status-dot"></div>
+              <span>In Development</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sports -->
+        <div class="coming-soon-card">
+          <div class="cs-card-glow cs-glow-amber"></div>
+          <div class="cs-card-inner">
+            <div class="cs-icon-wrap cs-icon-amber">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                <path d="M2 12h20"/>
+              </svg>
+            </div>
+            <div class="cs-content">
+              <span class="cs-badge cs-badge-amber">COMING SOON</span>
+              <h3 class="cs-title">Sports</h3>
+              <p class="cs-desc">AI-powered predictions for NBA, NFL, EPL, and more. Win/loss calls backed by live odds, player stats, and market sentiment.</p>
+              <div class="cs-tags">
+                <span class="cs-tag cs-tag-amber">NBA</span>
+                <span class="cs-tag cs-tag-amber">NFL</span>
+                <span class="cs-tag cs-tag-amber">EPL</span>
+                <span class="cs-tag cs-tag-amber">UFC</span>
+              </div>
+            </div>
+            <div class="cs-status">
+              <div class="cs-status-dot cs-dot-amber"></div>
+              <span>In Development</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="coming-soon-footer">
+        <p>Want early access? <span class="cs-highlight">Join the waitlist</span> and be the first to know when new markets go live.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- Footer — angular top -->
   <footer class="footer">
     <div class="container">
@@ -1025,7 +1414,7 @@
         </div>
         <div class="footer-social">
           <span class="footer-nav-label">Connect</span>
-          <a href="#">Twitter / X</a>
+          <a href="https://x.com/Kagami15738" target="_blank" rel="noopener noreferrer">Twitter / X</a>
           <a href="#">Discord</a>
           <a href="#">OpenSea</a>
           <a href="#">Etherscan</a>

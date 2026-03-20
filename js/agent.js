@@ -274,6 +274,110 @@
     }
   }
 
+  // ═══════════════════════════════════════════
+  // TIMEFRAME CONFIG
+  // ═══════════════════════════════════════════
+  const TF_CONFIG = {
+    '5m': {
+      label:       '5 MIN',
+      seconds:     300,
+      interval:    '5m',
+      source:      'vanguard-bot',
+      livePredId:  1,
+      subtitle:    'Live BTC 5-minute predictions powered by AI + on-chain data.',
+      modelDetail: '5-min BTC Prediction',
+      slugPrefix:  'btc-updown-5m-',
+    },
+    '15m': {
+      label:       '15 MIN',
+      seconds:     900,
+      interval:    '15m',
+      source:      'vanguard-bot-15m',
+      livePredId:  2,
+      subtitle:    'Live BTC 15-minute predictions powered by AI + on-chain data.',
+      modelDetail: '15-min BTC Prediction',
+      slugPrefix:  'btc-updown-15m-',
+    },
+    '1h': {
+      label:       '1 HOUR',
+      seconds:     3600,
+      interval:    '1h',
+      source:      'vanguard-bot-1h',
+      livePredId:  3,
+      subtitle:    'Live BTC 1-hour predictions powered by AI + on-chain data.',
+      modelDetail: '1-Hour BTC Prediction',
+      slugPrefix:  'btc-updown-1h-',
+    },
+  };
+
+  let activeTF = '5m';
+
+  // Switch timeframe — resets all window state and refreshes
+  function switchTimeframe(tf) {
+    if (tf === activeTF) return;
+    activeTF = tf;
+    const cfg = TF_CONFIG[tf];
+
+    // Update tab UI
+    document.querySelectorAll('.agent-tf-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tf === tf);
+    });
+
+    // Update subtitle and model detail
+    const sub = document.getElementById('agentSubtitle');
+    const det = document.getElementById('agentModelDetail');
+    if (sub) sub.textContent = cfg.subtitle;
+    if (det) det.textContent = cfg.modelDetail;
+
+    // Reset all window-level state
+    state.priceToBeat        = null;
+    state.currentWindowStart = 0;
+    state.upPct              = null;
+    state.downPct            = null;
+    state.wins               = 0;
+    state.losses             = 0;
+    state.history            = [];
+    finalPredLocked          = false;
+    finalPredDirection       = null;
+    finalPredPTB             = null;
+    lastHistoryHash          = '';
+    lastHistoryCount         = 0;
+
+    // Hide prediction until new data arrives
+    if (els.finalPred)      els.finalPred.style.display      = 'none';
+    if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
+    if (els.ptb)            els.ptb.textContent              = '--';
+    if (els.countdown)      els.countdown.textContent        = '--:--';
+    if (els.wins)           els.wins.textContent             = '--';
+    if (els.losses)         els.losses.textContent           = '--';
+    if (els.winRate)        els.winRate.textContent          = '--%';
+    if (els.total)          els.total.textContent            = '--';
+
+    // Reset streak displays
+    if (els.allWinStreak)  els.allWinStreak.textContent  = '--';
+    if (els.currWinStreak) els.currWinStreak.textContent = '--';
+    if (els.allLossStreak) els.allLossStreak.textContent = '--';
+    if (els.currLossStreak)els.currLossStreak.textContent= '--';
+
+    // Reset model perf
+    if (els.accuracy)  els.accuracy.textContent  = '--';
+    if (els.precision) els.precision.textContent = '--';
+    if (els.f1)        els.f1.textContent        = '--';
+    if (els.rocAuc)    els.rocAuc.textContent    = '--';
+    if (els.tp)        els.tp.textContent        = '--';
+    if (els.tn)        els.tn.textContent        = '--';
+    if (els.fp)        els.fp.textContent        = '--';
+    if (els.fn)        els.fn.textContent        = '--';
+    if (els.recall)    els.recall.textContent    = '--';
+
+    // Clear history list
+    if (els.historyList) els.historyList.innerHTML = '<div class="agent-history-empty">Loading...</div>';
+
+    // Refresh with new timeframe data
+    refresh();
+    console.log('[AGENT] Switched to timeframe:', tf);
+  }
+
   const state = {
     btcPrice: null,
     priceSource: null,
@@ -491,7 +595,8 @@
 
   async function fetchCandles() {
     try {
-      const url = 'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=100';
+      const interval = TF_CONFIG[activeTF].interval;
+      const url = 'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=' + interval + '&limit=100';
       const res = await fetch(url);
       if (!res.ok) return null;
       const raw = await res.json();
@@ -535,75 +640,55 @@
 
   async function fetchPolymarket() {
     try {
-      const now = Math.floor(Date.now() / 1000);
-      const interval = 300;
+      const cfg      = TF_CONFIG[activeTF];
+      const now      = Math.floor(Date.now() / 1000);
+      const interval = cfg.seconds;
       const currentStart = Math.floor(now / interval) * interval;
-      const timestamps = [currentStart, currentStart + interval, currentStart - interval];
+      const timestamps   = [currentStart, currentStart + interval, currentStart - interval];
+      const cacheKey     = 'vg_ptb_' + activeTF + '_' + currentStart;
 
-      let bestMarket = null;
-      let bestTs = 0;
+      let bestMarket = null, bestTs = 0;
 
       for (const ts of timestamps) {
-        const slug = 'btc-updown-5m-' + ts;
+        const slug      = cfg.slugPrefix + ts;
         const targetUrl = 'https://gamma-api.polymarket.com/markets?slug=' + slug;
-        const data = await fetchWithProxy(targetUrl);
+        const data      = await fetchWithProxy(targetUrl);
         if (!data || data.length === 0) continue;
-
         const market = data[0];
         if (market.closed && !market.acceptingOrders) continue;
-
-        // Prefer the current window's market
         if (!bestMarket || ts === currentStart) {
-          bestMarket = market;
-          bestTs = ts;
-          if (ts === currentStart) break; // found current window, stop
+          bestMarket = market; bestTs = ts;
+          if (ts === currentStart) break;
         }
       }
 
       if (!bestMarket) return null;
 
       const gammaOdds = JSON.parse(bestMarket.outcomePrices || '[]');
-      const upPct = (parseFloat(gammaOdds[0] || 0) * 100).toFixed(1);
-      const downPct = (parseFloat(gammaOdds[1] || 0) * 100).toFixed(1);
+      const upPct     = (parseFloat(gammaOdds[0] || 0) * 100).toFixed(1);
+      const downPct   = (parseFloat(gammaOdds[1] || 0) * 100).toFixed(1);
 
-      // PTB: ONLY use startPrice from the CURRENT window's market
-      let startingPrice = null;
-      let ptbSrc = null;
+      let startingPrice = null, ptbSrc = null;
       if (bestTs === currentStart && bestMarket.startPrice) {
         startingPrice = parseFloat(bestMarket.startPrice);
         if (startingPrice > 0) {
           ptbSrc = 'polymarket';
-          // Persist so page refresh keeps the same PTB
-          try { sessionStorage.setItem('vg_ptb_' + currentStart, startingPrice.toString()); } catch(e) {}
-          console.log('[AGENT] PTB from Polymarket (authoritative):', startingPrice);
-        } else {
-          startingPrice = null;
-        }
+          try { sessionStorage.setItem(cacheKey, startingPrice.toString()); } catch(e) {}
+          console.log('[AGENT][' + activeTF + '] PTB from Polymarket:', startingPrice);
+        } else { startingPrice = null; }
       }
 
-      // If we didn't get PTB from Polymarket, check sessionStorage
       if (!startingPrice) {
         try {
-          var saved = sessionStorage.getItem('vg_ptb_' + currentStart);
-          if (saved) {
-            startingPrice = parseFloat(saved);
-            ptbSrc = 'polymarket-cached';
-            console.log('[AGENT] PTB from session cache:', startingPrice);
-          }
+          const saved = sessionStorage.getItem(cacheKey);
+          if (saved) { startingPrice = parseFloat(saved); ptbSrc = 'polymarket-cached'; }
         } catch(e) {}
       }
 
-      const timeLeft = Math.max(0, (bestTs + interval) - now);
-
       return {
-        slug: 'btc-updown-5m-' + bestTs,
-        startingPrice,
-        ptbSource: ptbSrc,
-        upPct,
-        downPct,
-        timeLeft,
-        startTimestamp: bestTs,
-        endTimestamp: bestTs + interval,
+        startingPrice, ptbSource: ptbSrc, upPct, downPct,
+        timeLeft: Math.max(0, (bestTs + interval) - now),
+        startTimestamp: bestTs, endTimestamp: bestTs + interval,
       };
     } catch (e) {
       console.error('[AGENT] Polymarket error:', e.message);
@@ -614,32 +699,27 @@
   // ── Supabase REST: fetch history ──
   async function fetchHistory() {
     try {
-      const url = SUPABASE_URL + '/rest/v1/predictions?select=*&order=ts.desc&limit=1000';
-      const res = await fetch(url, { headers: SB_HEADERS });
-      if (!res.ok) {
-        console.error('[AGENT] History fetch failed:', res.status, res.statusText);
-        return [];
-      }
-      const data = await res.json();
-      if (!data || data.length === 0) {
-        console.warn('[AGENT] No predictions in Supabase');
-        return [];
-      }
+      // Each timeframe has its own table
+      const tableMap = { '5m': 'predictions', '15m': 'predictions_15m', '1h': 'predictions_1h' };
+      const table    = tableMap[activeTF] || 'predictions';
+      const source   = TF_CONFIG[activeTF].source;
+      const skipSrc  = source + '-skip';
 
-      // Deduplicate by timestamp — prefer 'vanguard-skip' over any other source
-      // so a skip always wins over a bot prediction for the same window
+      const url = SUPABASE_URL + '/rest/v1/' + table + '?select=*&order=ts.desc&limit=1000';
+      const res = await fetch(url, { headers: SB_HEADERS });
+      if (!res.ok) { console.error('[AGENT] History fetch failed:', res.status); return []; }
+      const data = await res.json();
+      if (!data || data.length === 0) return [];
+
+      // Dedup by ts — skip takes priority
       const byTs = {};
       for (const p of data) {
         const ts = Number(p.ts);
-        if (!byTs[ts]) {
-          byTs[ts] = p;
-        } else {
-          // Skip entry takes priority over any real prediction for the same window
-          if (p.source === 'vanguard-skip') byTs[ts] = p;
-        }
+        if (!byTs[ts]) { byTs[ts] = p; }
+        else if (p.source === skipSrc || p.source === 'vanguard-skip') { byTs[ts] = p; }
       }
       const deduped = Object.values(byTs).sort((a, b) => b.ts - a.ts);
-      console.log('[AGENT] Loaded ' + deduped.length + ' predictions (' + data.length + ' total, deduped)');
+      console.log('[AGENT][' + activeTF + '] Loaded ' + deduped.length + ' predictions from ' + table);
       return deduped;
     } catch (e) {
       console.error('[AGENT] History error:', e.message);
@@ -1939,23 +2019,26 @@
 
   // ── Save a SKIP entry to Supabase predictions ──
   async function saveSkip(condition, reason) {
-    const now = Math.floor(Date.now() / 1000);
-    const windowStart = Math.floor(now / 300) * 300;
+    const tableMap   = { '5m': 'predictions', '15m': 'predictions_15m', '1h': 'predictions_1h' };
+    const table      = tableMap[activeTF] || 'predictions';
+    const winSecs    = TF_CONFIG[activeTF].seconds;
+    const now        = Math.floor(Date.now() / 1000);
+    const windowStart = Math.floor(now / winSecs) * winSecs;
     const row = {
       ts:        windowStart,
       ptb:       state.priceToBeat || null,
       end_price: null,
       over:      null,
-      source:    'vanguard-skip',
+      source:    TF_CONFIG[activeTF].source + '-skip',
     };
     try {
-      const res = await fetch(SUPABASE_URL + '/rest/v1/predictions', {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
         method: 'POST',
         headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates' },
         body: JSON.stringify(row),
       });
       if (!res.ok) console.warn('[AGENT] Skip save failed:', res.status, await res.text());
-      else console.log('[AGENT] Skip saved for window', windowStart);
+      else console.log('[AGENT][' + activeTF + '] Skip saved for window', windowStart);
     } catch (e) {
       console.error('[AGENT] Skip save error:', e.message);
     }
@@ -1969,22 +2052,21 @@
   let lastPredFetch = 0;
 
   async function fetchLivePrediction() {
-    // Only fetch every 5 seconds to avoid spamming
     var now = Date.now();
     if (now - lastPredFetch < 5000) return;
     lastPredFetch = now;
 
     try {
-      var url = SUPABASE_URL + '/rest/v1/live_prediction?id=eq.1&select=*';
-      var res = await fetch(url, { headers: SB_HEADERS });
+      var predId = TF_CONFIG[activeTF].livePredId;
+      var url    = SUPABASE_URL + '/rest/v1/live_prediction?id=eq.' + predId + '&select=*';
+      var res    = await fetch(url, { headers: SB_HEADERS });
       if (!res.ok) return;
       var data = await res.json();
       if (!data || data.length === 0) return;
 
       var pred = data[0];
       if (pred.direction === 'pending' || !pred.direction) {
-        // Bot hasn't made prediction yet
-        if (els.finalPred) els.finalPred.style.display = 'none';
+        if (els.finalPred)      els.finalPred.style.display      = 'none';
         if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'flex';
         return;
       }
@@ -2022,37 +2104,40 @@
 
   function updateCountdown() {
     if (!els.countdown) return;
-    const now = Math.floor(Date.now() / 1000);
-    const windowEnd = (Math.floor(now / 300) + 1) * 300;
-    const windowStart = windowEnd - 300;
-    const left = windowEnd - now;
-    const mins = Math.floor(left / 60);
-    const secs = left % 60;
+    const cfg        = TF_CONFIG[activeTF];
+    const winSecs    = cfg.seconds;
+    const now        = Math.floor(Date.now() / 1000);
+    const windowEnd  = (Math.floor(now / winSecs) + 1) * winSecs;
+    const windowStart = windowEnd - winSecs;
+    const left       = windowEnd - now;
+    const mins       = Math.floor(left / 60);
+    const secs       = left % 60;
     els.countdown.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
 
-    // New window detected
+    // New window detected — reset prediction state
     if (state.currentWindowStart !== windowStart) {
-      // Bot handles saving predictions — website only displays
-
       state.currentWindowStart = windowStart;
-      state.priceToBeat = null;
-      ptbSource = '';
-      finalPredLocked = false;
+      state.priceToBeat  = null;
+      ptbSource          = '';
+      finalPredLocked    = false;
       finalPredDirection = null;
-      finalPredPTB = null;
+      finalPredPTB       = null;
       if (els.finalPred) els.finalPred.style.display = 'none';
-
-      // Trigger refresh for new window data (guard prevents concurrent runs)
       setTimeout(refresh, 500);
     }
 
-    // Analyzing at 1:00 into window (4:00 left), sniper vote at 1:30 (3:30 left)
-    if (left > 240) {
-      if (els.finalPred) els.finalPred.style.display = 'none';
+    // Scale prediction timing to window size:
+    // Analyzing spinner: last 70% of window
+    // Lock prediction:   last 65% of window
+    const analyzeThreshold = Math.floor(winSecs * 0.70); // e.g. 5m→210s, 15m→630s, 1h→2520s
+    const lockThreshold    = Math.floor(winSecs * 0.65); // e.g. 5m→195s, 15m→585s, 1h→2340s
+
+    if (left > analyzeThreshold) {
+      if (els.finalPred)      els.finalPred.style.display      = 'none';
       if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
       finalPredLocked = false;
-    } else if (left > 210 && left <= 240) {
-      if (els.finalPred) els.finalPred.style.display = 'none';
+    } else if (left > lockThreshold && left <= analyzeThreshold) {
+      if (els.finalPred)      els.finalPred.style.display      = 'none';
       if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'flex';
       finalPredLocked = false;
     } else {
@@ -2265,6 +2350,13 @@
     setInterval(refreshHistory, 15000);
     setInterval(updateCountdown, 1000);
     updateCountdown();
+
+    // ── Timeframe tab switcher ──
+    document.querySelectorAll('.agent-tf-tab').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        switchTimeframe(btn.dataset.tf);
+      });
+    });
 
     // ── Realtime access check every 10 seconds ──
     let isRevoked = false;
