@@ -1,0 +1,4 @@
+@echo off
+start powershell -NoExit -Command "cd 'C:\Users\vicen\OneDrive\Desktop\vanguard'; $env:PORT='3000'; $env:DISCORD_WEBHOOK_URL='https://discord.com/api/webhooks/1483992600158670939/-BxxjLuBdrV3LmjSL-08GRJBv2RWlSIYK8MPSWOrbFz9YuJXDSp01QTsddBjG9rRJPCn'; node bot.mjs"
+start powershell -NoExit -Command "cd 'C:\Users\vicen\OneDrive\Desktop\vanguard'; $env:PORT_15M='3001'; $env:DISCORD_WEBHOOK_URL='https://discord.com/api/webhooks/1483992600158670939/-BxxjLuBdrV3LmjSL-08GRJBv2RWlSIYK8MPSWOrbFz9YuJXDSp01QTsddBjG9rRJPCn'; node bot15m.mjs"
+start powershell -NoExit -Command "cd 'C:\Users\vicen\OneDrive\Desktop\vanguard'; $env:PORT_1H='3003'; $env:DISCORD_WEBHOOK_URL='https://discord.com/api/webhooks/1483992600158670939/-BxxjLuBdrV3LmjSL-08GRJBv2RWlSIYK8MPSWOrbFz9YuJXDSp01QTsddBjG9rRJPCn'; node bot1h.mjs"

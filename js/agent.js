@@ -2039,10 +2039,10 @@
 
   // ── Save a SKIP entry to Supabase predictions ──
   async function saveSkip(condition, reason) {
-    const tableMap   = { '5m': 'predictions', '15m': 'predictions_15m', '1h': 'predictions_1h' };
-    const table      = tableMap[activeTF] || 'predictions';
-    const winSecs    = TF_CONFIG[activeTF].seconds;
-    const now        = Math.floor(Date.now() / 1000);
+    const tableMap    = { '5m': 'predictions', '15m': 'predictions_15m', '1h': 'predictions_1h' };
+    const table       = tableMap[activeTF] || 'predictions';
+    const winSecs     = TF_CONFIG[activeTF].seconds;
+    const now         = Math.floor(Date.now() / 1000);
     const windowStart = Math.floor(now / winSecs) * winSecs;
     const row = {
       ts:        windowStart,
@@ -2054,11 +2054,19 @@
     try {
       const res = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
         method: 'POST',
-        headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates' },
+        headers: {
+          ...SB_HEADERS,
+          'Prefer': 'resolution=ignore-duplicates', // ignore if already exists
+        },
         body: JSON.stringify(row),
       });
-      if (!res.ok) console.warn('[AGENT] Skip save failed:', res.status, await res.text());
-      else console.log('[AGENT][' + activeTF + '] Skip saved for window', windowStart);
+      // 201 = created, 200 = ok, both fine. Ignore 409 duplicate conflicts.
+      if (!res.ok && res.status !== 409) {
+        const txt = await res.text();
+        console.warn('[AGENT] Skip save failed:', res.status, txt);
+      } else {
+        console.log('[AGENT][' + activeTF + '] Skip saved for window', windowStart);
+      }
     } catch (e) {
       console.error('[AGENT] Skip save error:', e.message);
     }
