@@ -711,12 +711,19 @@
       const data = await res.json();
       if (!data || data.length === 0) return [];
 
-      // Dedup by ts — skip takes priority
+      // Dedup by ts — real prediction (with end_price) beats skip
       const byTs = {};
       for (const p of data) {
         const ts = Number(p.ts);
-        if (!byTs[ts]) { byTs[ts] = p; }
-        else if (p.source === skipSrc || p.source === 'vanguard-skip') { byTs[ts] = p; }
+        if (!byTs[ts]) {
+          byTs[ts] = p;
+        } else {
+          // Real prediction (has end_price) always beats a skip for same window
+          const existing = byTs[ts];
+          const pIsReal  = p.end_price != null && !isSkipEntry(p);
+          const exIsReal = existing.end_price != null && !isSkipEntry(existing);
+          if (pIsReal && !exIsReal) byTs[ts] = p; // replace skip with real
+        }
       }
       const deduped = Object.values(byTs).sort((a, b) => b.ts - a.ts);
       console.log('[AGENT][' + activeTF + '] Loaded ' + deduped.length + ' predictions from ' + table);
@@ -831,19 +838,20 @@
   }
 
   // ── Compute track record from history — skips excluded ──
+  function isSkipEntry(p) {
+    if (!p.source) return false;
+    return p.source.endsWith('-skip') || p.source === 'vanguard-skip';
+  }
+
   function computeTrackRecord(predictions) {
     let wins = 0, losses = 0;
     for (const p of predictions) {
-      // Exclude skip entries entirely
-      if (p.source === 'vanguard-skip') continue;
-      // Exclude any entry without a real over value
+      if (isSkipEntry(p)) continue;
       if (p.over === null || p.over === undefined || p.end_price === null || p.end_price === undefined || p.ptb === null || p.ptb === undefined) continue;
-      // Normalize over — could be boolean, string, or number from Supabase
-      const won = (p.over === true || p.over === 'true' || p.over === 't' || p.over === 1 || p.over === '1');
+      const won  = (p.over === true || p.over === 'true' || p.over === 't' || p.over === 1 || p.over === '1');
       const lost = (p.over === false || p.over === 'false' || p.over === 'f' || p.over === 0 || p.over === '0');
       if (won) wins++;
       else if (lost) losses++;
-      // If neither, skip (corrupted entry)
     }
     return { wins, losses };
   }
@@ -1162,7 +1170,7 @@
       var row = document.createElement('div');
 
       // ── SKIP row ──
-      if (p.source === 'vanguard-skip' || p.over == null) {
+      if (isSkipEntry(p) || p.over == null) {
         row.className = 'agent-history-item skip';
         row.innerHTML =
           '<span class="agent-history-time">' + time + '</span>' +
@@ -1174,7 +1182,19 @@
         continue;
       }
 
-      if (p.ptb == null || p.end_price == null) continue;
+      if (p.ptb == null || p.end_price == null) {
+        // Prediction made but window not settled yet — show as PENDING
+        var pendingDir = p.over == null ? '--' : (p.over === true || p.over === 'true' ? 'UP' : 'DOWN');
+        row.className = 'agent-history-item';
+        row.innerHTML =
+          '<span class="agent-history-time">' + time + '</span>' +
+          '<span class="agent-history-ptb">' + (p.ptb ? formatPrice(p.ptb) : '--') + '</span>' +
+          '<span class="agent-history-dir" style="color:rgba(200,220,210,0.5)">' + pendingDir + '</span>' +
+          '<span class="agent-history-end" style="color:rgba(200,220,210,0.4)">--</span>' +
+          '<span class="agent-history-result" style="color:rgba(200,220,210,0.4);font-size:0.7rem;letter-spacing:0.1em;">PENDING</span>';
+        frag.appendChild(row);
+        continue;
+      }
 
       var ptb = formatPrice(p.ptb);
       var end = formatPrice(p.end_price);
@@ -1211,7 +1231,7 @@
     // normalize and sort ascending by ts
     const arr = predictions.slice()
       .filter(p => p &&
-        p.source !== 'vanguard-skip' &&
+        !isSkipEntry(p) &&
         p.over !== null && p.over !== undefined &&
         (p.over === true || p.over === false || p.over === 'true' || p.over === 'false' || p.over === 't' || p.over === 'f' || p.over === 1 || p.over === 0 || p.over === '1' || p.over === '0')
       )
@@ -1246,7 +1266,7 @@
 
     let tp = 0, tn = 0, fp = 0, fn = 0;
     for (const r of rows) {
-      if (r.source === 'vanguard-skip') continue;
+      if (isSkipEntry(r)) continue;
       if (r.ptb == null || r.end_price == null || r.over == null || r.over === undefined) continue;
       const correct = (r.over === true || r.over === 'true' || r.over === 't' || r.over === 1 || r.over === '1');
       const actualOver = r.end_price > r.ptb;
@@ -2126,11 +2146,18 @@
       setTimeout(refresh, 500);
     }
 
-    // Scale prediction timing to window size:
-    // Analyzing spinner: last 70% of window
-    // Lock prediction:   last 65% of window
-    const analyzeThreshold = Math.floor(winSecs * 0.70); // e.g. 5m→210s, 15m→630s, 1h→2520s
-    const lockThreshold    = Math.floor(winSecs * 0.65); // e.g. 5m→195s, 15m→585s, 1h→2340s
+    // Prediction timing — fire at different points per timeframe
+    // 5m:  spinner at 1:00 in (210s left), lock at 1:30 in (195s left)
+    // 15m: spinner at 11:15 in (225s left), lock at 12:00 in (180s left)
+    // 1h:  spinner at 48:00 in (720s left), lock at 50:00 in (600s left)
+    const timingMap = {
+      '5m':  { analyze: 210, lock: 195 },
+      '15m': { analyze: 225, lock: 180 },
+      '1h':  { analyze: 720, lock: 600 },
+    };
+    const timing         = timingMap[activeTF] || timingMap['5m'];
+    const analyzeThreshold = timing.analyze;
+    const lockThreshold    = timing.lock;
 
     if (left > analyzeThreshold) {
       if (els.finalPred)      els.finalPred.style.display      = 'none';
