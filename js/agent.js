@@ -2178,7 +2178,13 @@
     } else {
       if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
       if (!finalPredLocked) {
-        analyzeFinalPrediction(window._lastCandles || null);
+        if (activeTF === '5m') {
+          // 5m uses browser-side sniper engine
+          analyzeFinalPrediction(window._lastCandles || null);
+        } else {
+          // 15m and 1h read from bot's live_prediction in Supabase
+          fetchLivePrediction();
+        }
       }
     }
   }
@@ -2301,6 +2307,11 @@
           updateCallUI();
         }
       } catch (e2) { console.error('[AGENT] PTB fallback error:', e2.message); }
+    }
+
+    // For 15m and 1h — also fetch the bot's live prediction from Supabase
+    if (activeTF !== '5m') {
+      try { await fetchLivePrediction(); } catch(e) {}
     }
 
     refreshing = false;
