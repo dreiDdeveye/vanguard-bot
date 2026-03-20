@@ -318,6 +318,9 @@
     activeTF = tf;
     const cfg = TF_CONFIG[tf];
 
+    // Sync lock state for this timeframe
+    syncLockFromTF();
+
     // Update tab UI
     document.querySelectorAll('.agent-tf-tab').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tf === tf);
@@ -337,13 +340,11 @@
     state.wins               = 0;
     state.losses             = 0;
     state.history            = [];
-    finalPredLocked          = false;
-    finalPredDirection       = null;
-    finalPredPTB             = null;
     lastHistoryHash          = '';
     lastHistoryCount         = 0;
 
-    // Hide prediction until new data arrives
+    // Sync lock state from the new TF (keeps existing lock if already voted)
+    syncLockFromTF();
     if (els.finalPred)      els.finalPred.style.display      = 'none';
     if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
     if (els.ptb)            els.ptb.textContent              = '--';
@@ -457,10 +458,41 @@
   const CHART_DURATION = 30 * 60 * 1000; // show last 30 minutes
   let lastChartSave = 0; // throttle saves to every 10 seconds
 
-  let finalPredLocked = false;
-  let finalPredWindow = 0;
+  let finalPredLocked    = false;
+  let finalPredWindow    = 0;
   let finalPredDirection = null;
-  let finalPredPTB = null;
+  let finalPredPTB       = null;
+
+  // Per-timeframe lock — so switching tabs never clobbers a locked prediction
+  const tfLockState = {
+    '5m':  { locked: false, direction: null, ptb: null },
+    '15m': { locked: false, direction: null, ptb: null },
+    '1h':  { locked: false, direction: null, ptb: null },
+  };
+
+  function isLocked()           { return tfLockState[activeTF].locked; }
+  function setLocked(dir, ptb)  {
+    tfLockState[activeTF].locked    = true;
+    tfLockState[activeTF].direction = dir;
+    tfLockState[activeTF].ptb       = ptb;
+    finalPredLocked    = true;
+    finalPredDirection = dir;
+    finalPredPTB       = ptb;
+  }
+  function resetLock() {
+    tfLockState[activeTF].locked    = false;
+    tfLockState[activeTF].direction = null;
+    tfLockState[activeTF].ptb       = null;
+    finalPredLocked    = false;
+    finalPredDirection = null;
+    finalPredPTB       = null;
+  }
+  function syncLockFromTF() {
+    const s = tfLockState[activeTF];
+    finalPredLocked    = s.locked;
+    finalPredDirection = s.direction;
+    finalPredPTB       = s.ptb;
+  }
 
   // Chainlink price snapshots for PTB — capture at window boundaries
   let chainlinkSnapshotPrice = null;
@@ -1991,9 +2023,7 @@
 
     if (noTrade) {
       showNoTrade(marketCondition, warnings.join(' · ') || 'No high-probability setup detected.');
-      finalPredDirection = null;
-      finalPredPTB       = ptb;
-      finalPredLocked    = true;
+      setLocked(null, ptb);
       return;
     }
 
@@ -2012,9 +2042,7 @@
       'Entry: ' + entryZone + ' | SL: ' + sl + ' | TP: ' + tp +
       ' · ' + signals.join(' · ');
 
-    finalPredDirection = isLong ? 'up' : 'down';
-    finalPredPTB       = ptb;
-    finalPredLocked    = true;
+    setLocked(isLong ? 'up' : 'down', ptb);
   }
 
   // ── Show NO TRADE state ──
@@ -2101,9 +2129,7 @@
 
       // Bot has a prediction — display it
       var isUp = pred.direction === 'over' || pred.direction === 'up';
-      finalPredLocked = true;
-      finalPredDirection = pred.direction;
-      finalPredPTB = pred.ptb ? parseFloat(pred.ptb) : null;
+      setLocked(pred.direction, pred.ptb ? parseFloat(pred.ptb) : null);
 
       if (els.finalPred) {
         els.finalPred.style.display = 'block';
@@ -2147,42 +2173,34 @@
       state.currentWindowStart = windowStart;
       state.priceToBeat  = null;
       ptbSource          = '';
-      finalPredLocked    = false;
-      finalPredDirection = null;
-      finalPredPTB       = null;
+      resetLock();
       if (els.finalPred) els.finalPred.style.display = 'none';
       setTimeout(refresh, 500);
     }
 
-    // Prediction timing — fire at different points per timeframe
-    // 5m:  spinner at 1:00 in (210s left), lock at 1:30 in (195s left)
-    // 15m: spinner at 11:15 in (225s left), lock at 12:00 in (180s left)
-    // 1h:  spinner at 48:00 in (720s left), lock at 50:00 in (600s left)
+    // Prediction timing
     const timingMap = {
       '5m':  { analyze: 210, lock: 195 },
       '15m': { analyze: 225, lock: 180 },
       '1h':  { analyze: 720, lock: 600 },
     };
-    const timing         = timingMap[activeTF] || timingMap['5m'];
+    const timing           = timingMap[activeTF] || timingMap['5m'];
     const analyzeThreshold = timing.analyze;
     const lockThreshold    = timing.lock;
 
     if (left > analyzeThreshold) {
       if (els.finalPred)      els.finalPred.style.display      = 'none';
       if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
-      finalPredLocked = false;
+      if (isLocked()) resetLock(); // reset if we somehow got here locked
     } else if (left > lockThreshold && left <= analyzeThreshold) {
       if (els.finalPred)      els.finalPred.style.display      = 'none';
       if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'flex';
-      finalPredLocked = false;
     } else {
       if (els.finalAnalyzing) els.finalAnalyzing.style.display = 'none';
-      if (!finalPredLocked) {
+      if (!isLocked()) {
         if (activeTF === '5m') {
-          // 5m uses browser-side sniper engine
           analyzeFinalPrediction(window._lastCandles || null);
         } else {
-          // 15m and 1h read from bot's live_prediction in Supabase
           fetchLivePrediction();
         }
       }
